@@ -1,0 +1,12 @@
+---
+title: "test"
+author: "Evan Patton"
+date: "10/19/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This file is just to test connection to git repo.
