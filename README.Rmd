@@ -1,0 +1,18 @@
+---
+title: "EDA"
+author: "Samantha Hunter"
+date: "10/17/2021"
+output: html_document
+---
+```{r}
+library(tidyverse)
+```
+
+
+Reading in the data
+```{r}
+getwd()
+NewsPop <- read_csv("../OnlineNewsPopularity.csv", col_names = TRUE)
+
+```
+
