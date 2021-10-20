@@ -14,5 +14,44 @@ Reading in the data
 getwd()
 NewsPop <- read_csv("../OnlineNewsPopularity.csv", col_names = TRUE)
 
+library(tidyverse)
+
+# read in raw data
+data <- read_csv("OnlineNewsPopularity.csv")
+
+# add in day of week variable called "day"
+# check every indicator variable for a 1, once it hits a 1
+# the new variable day is defined as whatever day it is
+# if no 1 are present saves the day variable as "error"
+data <- data %>%
+  mutate(
+    day = if_else(weekday_is_monday == 1, "monday",
+                  if_else(weekday_is_tuesday == 1, "tuesday",
+                          if_else(weekday_is_wednesday == 1, "wednesday",
+                                  if_else(weekday_is_thursday == 1, "thursday",
+                                          if_else(weekday_is_friday == 1, "friday",
+                                                  if_else(weekday_is_saturday == 1, "saturday",
+                                                          if_else(weekday_is_sunday == 1, "sunday","error"))))))),
+    topic = if_else(data_channel_is_lifestyle == 1, "lifestyle", 
+                  if_else(data_channel_is_entertainment == 1, "entertainment", 
+                          if_else(data_channel_is_bus == 1, "business", 
+                                  if_else(data_channel_is_socmed == 1, "socialMedia", 
+                                          if_else(data_channel_is_tech == 1, "tech",
+                                                  if_else(data_channel_is_world == 1, "world", "error"))))))
+    )
+
+# remove old day indicators
+data <- data %>%
+  select(!starts_with("weekday_is_"))
+
+# change to factor
+data$day <- as.factor(data$day)
+
+#check structure to make sure is successful 
+str(data)
+
+#double check for "errors"
+table(data$day)
+
 ```
 
