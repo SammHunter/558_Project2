@@ -6,6 +6,7 @@ output: html_document
 ---
 ```{r}
 library(tidyverse)
+library(caret)
 ```
 
 
@@ -61,6 +62,9 @@ Variables to ignore - url
 
 I did pull out all the variables from this, but I'm just printing the ones that may present problems when we analyze them
 ```{r}
+# too big?
+#plot(data)
+
 # creating a function to return Tukey's five number summary plus the mean
 getSummaries <- function(vector){
   five_num<-fivenum(vector)
@@ -71,6 +75,8 @@ getSummaries <- function(vector){
 # pulling out the numeric columns into their own data set so we can get Tukey's five number summary plus the mean for each of them
 num_cols <- select_if(data, is.numeric)
 num_summary <- lapply(num_cols, getSummaries)
+
+
 attach(num_summary)
 
 # this is concerning because while I'm sure number of shares decreases relatively quickly as days go by, I am also sure that within two weeks is still prime sharing time for articles. The range of days after publication until when number of shares is captured runs from over to years ago to only 8 days. Sometimes things go viral a couple of months after they are published 
@@ -88,7 +94,15 @@ empty
 sum(empty$global_subjectivity)
 sum(empty$avg_positive_polarity)
 
-print(five_num_summary)
+num_videos
+
+detach(num_summary)
+
+
+sref <- data %>% filter(self_reference_avg_sharess >= 0)
+sref
+
+correlation <- cor(num_cols)
 
 
 ```
@@ -97,8 +111,23 @@ print(five_num_summary)
 # Preprocessing the Data for Manipulation
 
 ```{r}
+world <- data %>% filter(topic == "world")
+
 # split the data into a training and test set 
 set.seed(214)
+
+# splitting it into 80% for training and 20% for testing
+train <- sample(1:nrow(world), size = nrow(world)*0.8)
+test <- setdiff(1:nrow(world), train)
+
+# Actually subsetting
+train_set <- world[train, ]
+test_set <- world[test, ]
+
+# center and scale the data (don't have to use if we don't want to)
+preProcValues <- preProcess(train_set, method = c("center", "scale"))
+train_set_std <- predict(preProcValues, train_set)
+
 
 ```
 
