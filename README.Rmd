@@ -11,10 +11,6 @@ library(tidyverse)
 
 Reading in the data
 ```{r}
-NewsPop <- read_csv("../OnlineNewsPopularity.csv", col_names = TRUE)
-
-library(tidyverse)
-
 # read in raw data
 data <- read_csv("OnlineNewsPopularity.csv")
 
@@ -41,7 +37,7 @@ data <- data %>%
 
 # remove old day indicators
 data <- data %>%
-  select(!starts_with("weekday_is_"))
+  select(!starts_with("weekday_is_"), -starts_with("data_channel_is_"))
 
 # change to factor
 data$day <- as.factor(data$day)
@@ -56,6 +52,60 @@ table(data$topic)
 
 # these actually don't have a topic!
 err <- data %>% filter(topic == "error")
-err
 ```
 
+
+# EDA - overall exploration
+
+Variables to ignore - url 
+
+I did pull out all the variables from this, but I'm just printing the ones that may present problems when we analyze them
+```{r}
+# creating a function to return Tukey's five number summary plus the mean
+getSummaries <- function(vector){
+  five_num<-fivenum(vector)
+  mean<-mean(vector)
+  return(list(five_num, mean))
+}
+
+# pulling out the numeric columns into their own data set so we can get Tukey's five number summary plus the mean for each of them
+num_cols <- select_if(data, is.numeric)
+num_summary <- lapply(num_cols, getSummaries)
+attach(num_summary)
+
+# this is concerning because while I'm sure number of shares decreases relatively quickly as days go by, I am also sure that within two weeks is still prime sharing time for articles. The range of days after publication until when number of shares is captured runs from over to years ago to only 8 days. Sometimes things go viral a couple of months after they are published 
+timedelta
+
+# 2 - 23 
+n_tokens_title
+
+# 0 to 8474, mean = 546.51
+n_tokens_content
+
+# empty articles? - maybe they are articles that only have pictures, but if we choose to look at content, we should make sure to mention this. Articles that have no content also have 0s for several other variables, but non-zero values for LDA
+empty <- data %>% filter(n_tokens_content == 0)
+empty
+sum(empty$global_subjectivity)
+sum(empty$avg_positive_polarity)
+
+print(five_num_summary)
+
+
+```
+
+
+# Preprocessing the Data for Manipulation
+
+```{r}
+# split the data into a training and test set 
+set.seed(214)
+
+```
+
+
+# Model Analysis
+
+### Linear Modelling 
+
+
+### Random Forests
