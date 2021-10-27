@@ -7,6 +7,12 @@ output: html_document
 ```{r}
 library(tidyverse)
 library(caret)
+
+# use for subset variable selection
+library(leaps)
+
+# use this for parallel computing
+library(parallel)
 ```
 
 
@@ -88,9 +94,10 @@ n_tokens_title
 # 0 to 8474, mean = 546.51
 n_tokens_content
 
-# empty articles? - maybe they are articles that only have pictures, but if we choose to look at content, we should make sure to mention this. Articles that have no content also have 0s for several other variables, but non-zero values for LDA
+# empty articles? - I visited a few of the articles and now believe that these are just an error. See 	
+# http://mashable.com/2013/02/05/social-tv-chart-2-5/  and http://mashable.com/2013/02/24/oscars-online/ which
+# clearly have words in their article. Just something suspect and to keep in mind
 empty <- data %>% filter(n_tokens_content == 0)
-empty
 sum(empty$global_subjectivity)
 sum(empty$avg_positive_polarity)
 
@@ -103,7 +110,9 @@ sref <- data %>% filter(self_reference_avg_sharess >= 0)
 sref
 
 correlation <- cor(num_cols)
+correlation
 
+plot(data$timedelta, data$shares)
 
 ```
 
@@ -111,7 +120,8 @@ correlation <- cor(num_cols)
 # Preprocessing the Data for Manipulation
 
 ```{r}
-world <- data %>% filter(topic == "world")
+# creating the new data set that only references the desired topic, and then we obviously don't need the topic as it's own variable anymore (they'll all contain the same value)
+world <- data %>% filter(topic == "world") %>% select(!topic)
 
 # split the data into a training and test set 
 set.seed(214)
@@ -121,7 +131,7 @@ train <- sample(1:nrow(world), size = nrow(world)*0.8)
 test <- setdiff(1:nrow(world), train)
 
 # Actually subsetting
-train_set <- world[train, ]
+train_set <- world[train, 1:49]
 test_set <- world[test, ]
 
 # center and scale the data (don't have to use if we don't want to)
@@ -137,4 +147,62 @@ train_set_std <- predict(preProcValues, train_set)
 ### Linear Modelling 
 
 
+Linear regression is a simple supervised learning method for quantitative response variables. These models are well-liked because they are easy to interpret. The 'fit' of a linear model is done by minimizing the sum of the squared residuals. We hope to use this linear model to predict the number of shares an article can achieve based on some predictors. 
+
+We have 50 predictors. Three of these predictors are character variables - url of the article, the day the article was published (day), and the topic of the article (topic). 
+
+
+```{r}
+# Adjusted R Square is 0.03 & Residual Std Error = 0.59
+# Horrible
+lm_full <- lm(shares~.-url, data=train_set)
+summary(lm_full)
+# also horrible
+plot(lm_full)
+
+
+lm_sig <- lm(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs + average_token_length + kw_min_avg + kw_max_avg + kw_avg_avg + max_negative_polarity, 
+             data = train_set)
+summary(lm_sig)
+
+lm_day <- lm(shares ~ day, data=train_set_std)
+summary(lm_day)
+
+lm_lda <- lm(shares~LDA_00+LDA_01+LDA_02+LDA_03+LDA_04, data=train_set_std)
+summary(lm_lda)
+
+```
+
+
 ### Random Forests
+
+Setting up parallel processing to reduce the time it takes to run random forests. 
+
+```{r}
+### I have 8 cores, but this is from lecture - sam
+#library(parallel)
+#detectCores()
+#cluster <- makeCluster(4)
+
+
+# Mark's link from Moodle
+library(doParallel)
+cl <- makePSOCKcluster(5)
+registerDoParallel(cl)
+
+## All subsequent models are then run in parallel
+model <- train(shares ~ day, data = train_set, method = "rf")
+
+rfFit <- train(myHeartDisease ~ ., data = train, method = "rf", 
+              trControl = trainControl
+               (method = "repeatedcv", number = 5, repeats = 3), 
+              preProcess = c("center", "scale"), 
+              tuneGrid = data.frame(mtry = 1:15))
+rfFit
+
+## When you are done:
+stopCluster(cl)
+
+```
+
+
