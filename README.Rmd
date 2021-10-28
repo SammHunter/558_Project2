@@ -94,6 +94,9 @@ n_tokens_title
 # 0 to 8474, mean = 546.51
 n_tokens_content
 
+# 0 to 843300 range, mean is 3395.38, median 1400
+shares
+
 # empty articles? - I visited a few of the articles and now believe that these are just an error. See 	
 # http://mashable.com/2013/02/05/social-tv-chart-2-5/  and http://mashable.com/2013/02/24/oscars-online/ which
 # clearly have words in their article. Just something suspect and to keep in mind
@@ -102,8 +105,6 @@ sum(empty$global_subjectivity)
 sum(empty$avg_positive_polarity)
 
 num_videos
-
-hist(shares)
 
 detach(num_summary)
 
@@ -115,6 +116,8 @@ correlation <- cor(num_cols)
 correlation
 
 plot(data$timedelta, data$shares)
+
+
 
 ```
 
@@ -129,7 +132,7 @@ world <- data %>% filter(topic == "world") %>% select(!topic)
 set.seed(214)
 
 # splitting it into 80% for training and 20% for testing
-train <- sample(1:nrow(world), size = nrow(world)*0.8)
+train <- sample(1:nrow(world), size = nrow(world)*0.7)
 test <- setdiff(1:nrow(world), train)
 
 # Actually subsetting
@@ -140,7 +143,14 @@ test_set <- world[test, ]
 preProcValues <- preProcess(train_set, method = c("center", "scale"))
 train_set_std <- predict(preProcValues, train_set)
 
+ggplot(data = world, aes(shares)) +
+  geom_histogram()
 
+# huge range, 35 to 284700
+getSummaries(world$shares)
+
+ggplot(data = world, aes(shares, timedelta)) +
+  geom_point(aes(color = day))
 ```
 
 
