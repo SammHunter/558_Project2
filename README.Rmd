@@ -120,12 +120,9 @@ sum(empty$avg_positive_polarity)
 
 num_videos
 
-
 #hist(shares) this causes an error for me, I just commented it out so I can knit the doc
 
-
 detach(num_summary)
-
 
 sref <- data %>% filter(self_reference_avg_sharess >= 0)
 sref
@@ -134,6 +131,15 @@ correlation <- cor(num_cols)
 correlation
 
 plot(data$timedelta, data$shares)
+
+# sorting examples using the mtcars dataset
+attach(data)
+
+# sort by mpg
+newdata <- data[order(-shares),]
+head(newdata)
+
+detach(data)
 ```
 
 
@@ -174,13 +180,14 @@ for(i in 1:length(col_names)){
   } # end if else statement
   
   } # end for loop
-  
+correlation_tibble  
 
 # Add new column for absolute value of correlation and sort by this column in descending order
 # To see which variables have the highest impact on 
 correlation_tibble <- correlation_tibble %>%
   mutate(abs_cor = abs(correlate)) %>%
   arrange(-abs_cor)
+
 
 # change names for better printing
 names(correlation_tibble) <- c("Variable","Correlation","Absoulte Correlation")
@@ -278,7 +285,7 @@ plot_func(5)
 
 Now that I have looked at the numeric variables, I want to check out the day variable to see if the day of the week has any effect on the number of times an article was shared. To do this I am going to preform a Chi-Squared test! Before I can preform that test however, I am going to create a categorical version of the shares variable called shares_quart that assigns the number of shares to its quartile value. I.E if an articles shares fall into the first quartile it will be assigned "1" etc.
 
-Then I build a contingency table between what day of the week an article was published and what quartile it ends up in. Finally I preform the Chi-Squared test.
+Then I build a contingency table between what day of the week an article was published and what quartile it ends up in. Fianlly I preform the Chi-Sqaured test.
 ```{r evan quartiles}
 
 # Keep just the day and number of shares
@@ -312,7 +319,7 @@ print(chi_tst)
 
 ```{r}
 # creating the new data set that only references the desired topic, and then we obviously don't need the topic as it's own variable anymore (they'll all contain the same value)
-world <- data %>% filter(topic == "world") %>% select(!topic)
+world <- data %>% filter(topic == "world") %>% select(!topic, -url)
 
 # split the data into a training and test set 
 set.seed(214)
@@ -322,7 +329,7 @@ train <- sample(1:nrow(world), size = nrow(world)*0.7)
 test <- setdiff(1:nrow(world), train)
 
 # Actually subsetting
-train_set <- world[train, 1:49]
+train_set <- world[train, 1:48]
 test_set <- world[test, ]
 
 # center and scale the data (don't have to use if we don't want to)
@@ -331,6 +338,11 @@ train_set_std <- predict(preProcValues, train_set)
 
 ggplot(data = world, aes(shares)) +
   geom_histogram()
+
+# I think this boxplot says a lot, plenty of outliers that just dwarf the
+# majority of the shares
+ggplot(data = world, aes(shares)) +
+  geom_boxplot()
 
 # huge range, 35 to 284700
 getSummaries(world$shares)
@@ -353,7 +365,7 @@ Within this dataset, we have 50 predictors. Three of these predictors are charac
 ```{r}
 # Adjusted R Square is 0.03 & Residual Std Error = 0.59
 # Horrible
-lm_full <- lm(shares~.-url, data=train_set)
+lm_full <- lm(shares~., data=train_set)
 summary(lm_full)
 # also horrible
 par(mfrow = c(2, 2))
@@ -403,6 +415,8 @@ rf_LDA <- train(shares ~ LDA_00+LDA_01+LDA_02+LDA_03+LDA_04, data = train_set, m
                (method = "repeatedcv", number = 5, repeats = 3), 
               preProcess = c("center", "scale"), 
               tuneGrid = data.frame(mtry = 1:15))
+# Smallest RMSE is 5698.148 - so, so bad
+rf_LDA
 
 rf_SigPred <- train(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs
              + average_token_length + kw_min_avg + kw_max_avg + kw_avg_avg + max_negative_polarity,
@@ -410,17 +424,30 @@ rf_SigPred <- train(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num
               trControl = trainControl
                (method = "repeatedcv", number = 5, repeats = 3), 
               preProcess = c("center", "scale"), 
-              tuneGrid = data.frame(mtry = 1:15))
+              tuneGrid = data.frame(mtry = c(1, 7, 8, 16, 17, 18)))
+rf_SigPred
 
-model <- train(shares ~ LDA_00+LDA_01+LDA_02+LDA_03+LDA_04, data = train_set, method = "rf", 
-             trControl = trainControl
-             (method = "repeatedcv", number = 5, repeats = 3), 
-               preProcess = c("center", "scale"), 
-               tuneGrid = data.frame(mtry = 1:15))
+library(randomForest)
 
+# MSE 2618.834
+rfFit <- randomForest(shares~., data = train_set, mtry = ncol(train_set)/3, 
+                      ntree = 200, importance = TRUE)
+rfPred <- predict(rfFit, newdata = dplyr::select(train_set, -shares))
+sqrt(mean((rfPred-train_set$shares)^2))
+
+# MSE 2618.834
+rfFit <- randomForest(shares~., data = train_set, mtry = ncol(train_set)/3, 
+                      ntree = 200, importance = TRUE)
+rfPred <- predict(rfFit, newdata = dplyr::select(train_set, -shares))
+sqrt(mean((rfPred-train_set$shares)^2))
 
 ## When you are done:
 stopCluster(cl)
+
+unregister_dopar <- function() {
+  env <- foreach:::.foreachGlobals
+  rm(list=ls(name=env), pos=env)
+}
 
 # Hopefully we can bring this number wayyyyyy down. 
 rf_SigPred <- predict(model, newdata = train_set)
