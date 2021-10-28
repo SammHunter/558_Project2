@@ -116,9 +116,6 @@ correlation <- cor(num_cols)
 correlation
 
 plot(data$timedelta, data$shares)
-
-
-
 ```
 
 
@@ -159,9 +156,9 @@ ggplot(data = world, aes(shares, timedelta)) +
 ### Linear Modelling 
 
 
-Linear regression is a simple supervised learning method for quantitative response variables. These models are well-liked because they are easy to interpret. The 'fit' of a linear model is done by minimizing the sum of the squared residuals. We hope to use this linear model to predict the number of shares an article can achieve based on some predictors. 
+Linear regression is a simple supervised learning method for quantitative response variables. These models are well-liked because they are easy to interpret. The linear model assumes that the true relationship between the response and predictors is linear, although we can perform non-linear transformations on the model's predictors. For example, we can include higher power predictors, such as quadratics, we can include interaction terms, and we can take logarithmic transformations on the predictors. The 'fit' of a linear model is done by minimizing the sum of the squared residuals, which the model . We hope to use this linear model to predict the number of shares an article can achieve based on some predictors. 
 
-We have 50 predictors. Three of these predictors are character variables - url of the article, the day the article was published (day), and the topic of the article (topic). 
+Within this dataset, we have 50 predictors. Three of these predictors are character variables - url of the article (url), the day the article was published (day), and the topic of the article (topic). We won't include url as a predictor since that seems to be more of an identifier variables rather than an attribute of the article. We also are analyzing the topics separately from each other so we won't include that in our linear model either. The rest of the predictors are numeric.
 
 
 ```{r}
@@ -170,6 +167,7 @@ We have 50 predictors. Three of these predictors are character variables - url o
 lm_full <- lm(shares~.-url, data=train_set)
 summary(lm_full)
 # also horrible
+par(mfrow = c(2, 2))
 plot(lm_full)
 
 
@@ -177,6 +175,12 @@ lm_sig <- lm(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs
              + average_token_length + kw_min_avg + kw_max_avg + kw_avg_avg + max_negative_polarity, 
              data = train_set)
 summary(lm_sig)
+
+lm_6_sig <- lm(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs
+             + average_token_length + max_negative_polarity, 
+             data = train_set)
+summary(lm_sig)
+
 
 lm_day <- lm(shares ~ day, data=train_set_std)
 summary(lm_day)
@@ -204,7 +208,15 @@ cl <- makePSOCKcluster(5)
 registerDoParallel(cl)
 
 ## All subsequent models are then run in parallel
-model <- train(shares ~ LDA_00+LDA_01+LDA_02+LDA_03+LDA_04, data = train_set, method = "rf", 
+rf_LDA <- train(shares ~ LDA_00+LDA_01+LDA_02+LDA_03+LDA_04, data = train_set, method = "rf", 
+              trControl = trainControl
+               (method = "repeatedcv", number = 5, repeats = 3), 
+              preProcess = c("center", "scale"), 
+              tuneGrid = data.frame(mtry = 1:15))
+
+rf_SigPred <- train(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs
+             + average_token_length + kw_min_avg + kw_max_avg + kw_avg_avg + max_negative_polarity,
+             data = train_set, method = "rf", 
               trControl = trainControl
                (method = "repeatedcv", number = 5, repeats = 3), 
               preProcess = c("center", "scale"), 
@@ -214,7 +226,7 @@ model <- train(shares ~ LDA_00+LDA_01+LDA_02+LDA_03+LDA_04, data = train_set, me
 stopCluster(cl)
 
 # Hopefully we can bring this number wayyyyyy down. 
-rf_pred <- predict(model, newdata = train_set)
+rf_SigPred <- predict(model, newdata = train_set)
 treeRMSE <- sqrt(mean((rf_pred-train_set$shares)^2))
 treeRMSE
 ```
