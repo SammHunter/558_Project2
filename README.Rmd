@@ -103,6 +103,8 @@ sum(empty$avg_positive_polarity)
 
 num_videos
 
+hist(shares)
+
 detach(num_summary)
 
 
@@ -161,7 +163,8 @@ summary(lm_full)
 plot(lm_full)
 
 
-lm_sig <- lm(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs + average_token_length + kw_min_avg + kw_max_avg + kw_avg_avg + max_negative_polarity, 
+lm_sig <- lm(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs
+             + average_token_length + kw_min_avg + kw_max_avg + kw_avg_avg + max_negative_polarity, 
              data = train_set)
 summary(lm_sig)
 
@@ -178,7 +181,7 @@ summary(lm_lda)
 
 Setting up parallel processing to reduce the time it takes to run random forests. 
 
-```{r}
+```{r cache = TRUE}
 ### I have 8 cores, but this is from lecture - sam
 #library(parallel)
 #detectCores()
@@ -191,18 +194,19 @@ cl <- makePSOCKcluster(5)
 registerDoParallel(cl)
 
 ## All subsequent models are then run in parallel
-model <- train(shares ~ day, data = train_set, method = "rf")
-
-rfFit <- train(myHeartDisease ~ ., data = train, method = "rf", 
+model <- train(shares ~ LDA_00+LDA_01+LDA_02+LDA_03+LDA_04, data = train_set, method = "rf", 
               trControl = trainControl
                (method = "repeatedcv", number = 5, repeats = 3), 
               preProcess = c("center", "scale"), 
               tuneGrid = data.frame(mtry = 1:15))
-rfFit
 
 ## When you are done:
 stopCluster(cl)
 
+# Hopefully we can bring this number wayyyyyy down. 
+rf_pred <- predict(model, newdata = train_set)
+treeRMSE <- sqrt(mean((rf_pred-train_set$shares)^2))
+treeRMSE
 ```
 
 
