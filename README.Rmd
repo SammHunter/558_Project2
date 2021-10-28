@@ -4,6 +4,17 @@ author: "Samantha Hunter"
 date: "10/17/2021"
 output: html_document
 ---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval = TRUE, echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+# Introduction
+
+The following space is reserved for the introduction.
+
+The packages used in this report are:
+
 ```{r}
 library(tidyverse)
 library(caret)
@@ -13,6 +24,9 @@ library(leaps)
 
 # use this for parallel computing
 library(parallel)
+
+# To use Kable for good looking data print out
+library(knitr)
 ```
 
 
@@ -106,6 +120,10 @@ sum(empty$avg_positive_polarity)
 
 num_videos
 
+
+#hist(shares) this causes an error for me, I just commented it out so I can knit the doc
+
+
 detach(num_summary)
 
 
@@ -117,6 +135,177 @@ correlation
 
 plot(data$timedelta, data$shares)
 ```
+
+
+# EDA - Evan
+
+We can combine our EDAs into one if you'd like or we can do separate either is fine with me. 
+
+Also I think we are supposed to filter for the specific topic before EDA for automation, so I am going to do that here we can adjust this if I am wrong however.
+```{r evan eda 1}
+# filter data by topic and remove that column and url
+filtered_data <- data %>%
+  filter(topic == "world") %>%  # the filtering here would need to be automated with params$topic but since this is just for the world part thats what I have here.
+  select(-topic,-url)
+
+# Checking correlation with each numeric var and shares
+
+# get names of all columns except day because that isn't numeric, and shares as that is the target variable
+col_names <- names(filtered_data)[1:46]
+
+# Build a nice looking tibble for checking correlation
+for(i in 1:length(col_names)){
+  
+  #check correlation between shares and other columns
+  correlate <- cor(filtered_data$shares,filtered_data[,i])
+  
+  # save name of other column
+  cor_name <- col_names[i]
+  
+  # create row of a tibble
+  correlation_row <- tibble_row(cor_name,correlate)
+  
+  # if first iteration of loop, correlation_tibble is the correlation_row
+  # if not first iteration, correlation_tibble is binded with the new row info
+  if(i == 1){
+    correlation_tibble <- correlation_row
+  }else{
+    correlation_tibble <- rbind(correlation_tibble,correlation_row)
+  } # end if else statement
+  
+  } # end for loop
+  
+
+# Add new column for absolute value of correlation and sort by this column in descending order
+# To see which variables have the highest impact on 
+correlation_tibble <- correlation_tibble %>%
+  mutate(abs_cor = abs(correlate)) %>%
+  arrange(-abs_cor)
+
+# change names for better printing
+names(correlation_tibble) <- c("Variable","Correlation","Absoulte Correlation")
+
+# use kable for good looking print out
+kable(correlation_tibble)
+
+```
+
+From checking the correlation of all variables it appears that the following five variables have the highest correlation with shares:  
+
+1. `r as.character(correlation_tibble[1,1])`  
+1. `r as.character(correlation_tibble[2,1])`  
+1. `r as.character(correlation_tibble[3,1])`  
+1. `r as.character(correlation_tibble[4,1])`  
+1. `r as.character(correlation_tibble[5,1])`
+
+Lets build some scatter plots to visualize this better!
+
+First I want to build a function to make plotting easier.
+
+```{r evan plot_func}
+
+# Function to build scatter plot with a lm smooth line. 
+# cor_num corresponds to the place the place in the correlation tibble created earlier,
+# so if cor_num = 1, that is the highest absolute value correlation etc.
+plot_func <- function(cor_num){
+  
+# Which column in the filtered_data tibble is this correlation
+col_num <- which(names(filtered_data) %in% as.character(correlation_tibble[cor_num,1]))
+
+# Create new tibble with shares and only the column needed for this plot
+data_for_plot <- filtered_data %>%
+  select(shares,col_num)
+
+# Rename the second column for easy plotting
+names(data_for_plot)[2] <- "need"
+
+# Create plot, this will create a scatter plot between the two variables, with a lm geom smooth line included.
+# this will also define the labels and titles correctly.
+scat <- data_for_plot %>%
+  ggplot(aes(x = shares, y = need))+
+  geom_point()+
+  geom_smooth(method = "lm")+
+  labs(x = "Number of Shares",
+       y = str_to_upper(as.character(correlation_tibble[cor_num,1])),
+       title = paste0("Visualizing Correlation Between Shares and ",str_to_upper(as.character(correlation_tibble[cor_num,1]))))
+
+# Return the scatter plot
+return(scat)
+} # end function
+```
+
+
+Now that I have built the function lets check out these plots!
+
+```{r evan cor plot 1}
+# Build a plot with the highest absolute value correlation
+plot_func(1)
+```
+
+`r paste0("Looking at this plot between the number of shares of an article and ", as.character(correlation_tibble[1,1])," we can see that as ",as.character(correlation_tibble[1,1]), " goes up, the number of times an article is shared generally ", if_else(correlation_tibble[1,2] > 0,"increases","descreases"),".")`
+
+
+
+```{r evan cor plot 2}
+# Build a plot with the 2nd highest absolute value correlation
+plot_func(2)
+```
+
+`r paste0("Looking at this plot between the number of shares of an article and ", as.character(correlation_tibble[2,1])," we can see that as ",as.character(correlation_tibble[2,1]), " goes up, the number of times an article is shared generally ", if_else(correlation_tibble[2,2] > 0,"increases","descreases"),".")`
+
+```{r evan cor plot 3}
+# Build a plot with the 3rd highest absolute value correlation
+plot_func(3)
+```
+
+`r paste0("Looking at this plot between the number of shares of an article and ", as.character(correlation_tibble[3,1])," we can see that as ",as.character(correlation_tibble[3,1]), " goes up, the number of times an article is shared generally ", if_else(correlation_tibble[3,2] > 0,"increases","descreases"),".")`
+
+```{r evan cor plot 4}
+# Build a plot with the 4th highest absolute value correlation
+plot_func(4)
+```
+
+`r paste0("Looking at this plot between the number of shares of an article and ", as.character(correlation_tibble[4,1])," we can see that as ",as.character(correlation_tibble[4,1]), " goes up, the number of times an article is shared generally ", if_else(correlation_tibble[4,2] > 0,"increases","descreases"),".")`
+
+
+```{r evan cor plot 5}
+# Build a plot with the 5th highest absolute value correlation
+plot_func(5)
+```
+
+`r paste0("Looking at this plot between the number of shares of an article and ", as.character(correlation_tibble[5,1])," we can see that as ",as.character(correlation_tibble[5,1]), " goes up, the number of times an article is shared generally ", if_else(correlation_tibble[5,2] > 0,"increases","descreases"),".")`
+
+
+Now that I have looked at the numeric variables, I want to check out the day variable to see if the day of the week has any effect on the number of times an article was shared. To do this I am going to preform a Chi-Squared test! Before I can preform that test however, I am going to create a categorical version of the shares variable called shares_quart that assigns the number of shares to its quartile value. I.E if an articles shares fall into the first quartile it will be assigned "1" etc.
+
+Then I build a contingency table between what day of the week an article was published and what quartile it ends up in. Finally I preform the Chi-Squared test.
+```{r evan quartiles}
+
+# Keep just the day and number of shares
+data_for_chi <- filtered_data %>%
+  select(day, shares)
+
+# split data into quartiles
+quarts <- summary(data_for_chi$shares)
+
+# add column for which quartile the shares fall into.
+data_for_chi <- data_for_chi %>%
+  mutate(shares_quart = if_else(shares <= quarts[2],"Q1",
+                                if_else(shares <= quarts[3],"Q2",
+                                        if_else(shares <= quarts[5],"Q3",
+                                                if_else(shares <= quarts[6],"Q4","error")))))
+
+# Show contingency table between the day and the shares quartile
+kable(table(data_for_chi$shares_quart,data_for_chi$day))
+
+# preform chi squared test
+chi_tst <- chisq.test(x = data_for_chi$day, y = data_for_chi$shares_quart)
+
+# Show results
+print(chi_tst)
+```
+
+`r paste0("The Chi-Squared test resulted in a P-Value of ", chi_tst$p.value,". Using a signifigance level of 0.05 it appears that the day of the week that an article is published ", if_else(chi_tst$p.value > 0.05, "does not", "does"), " have a statistically significant impact on the amount of times an article is shared.") `
 
 
 # Preprocessing the Data for Manipulation
@@ -195,7 +384,7 @@ summary(lm_lda)
 
 Setting up parallel processing to reduce the time it takes to run random forests. 
 
-```{r cache = TRUE}
+```{r cache=FALSE}
 ### I have 8 cores, but this is from lecture - sam
 #library(parallel)
 #detectCores()
@@ -208,6 +397,7 @@ cl <- makePSOCKcluster(5)
 registerDoParallel(cl)
 
 ## All subsequent models are then run in parallel
+
 rf_LDA <- train(shares ~ LDA_00+LDA_01+LDA_02+LDA_03+LDA_04, data = train_set, method = "rf", 
               trControl = trainControl
                (method = "repeatedcv", number = 5, repeats = 3), 
@@ -221,6 +411,13 @@ rf_SigPred <- train(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num
                (method = "repeatedcv", number = 5, repeats = 3), 
               preProcess = c("center", "scale"), 
               tuneGrid = data.frame(mtry = 1:15))
+
+model <- train(shares ~ LDA_00+LDA_01+LDA_02+LDA_03+LDA_04, data = train_set, method = "rf", 
+             trControl = trainControl
+             (method = "repeatedcv", number = 5, repeats = 3), 
+               preProcess = c("center", "scale"), 
+               tuneGrid = data.frame(mtry = 1:15))
+
 
 ## When you are done:
 stopCluster(cl)
