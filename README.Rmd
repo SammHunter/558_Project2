@@ -22,6 +22,7 @@ The packages used in this report are:
 ```{r}
 library(tidyverse)
 library(caret)
+library(rmarkdown)
 
 # used for randomForests before I run on CV
 library(randomForest)
@@ -131,18 +132,10 @@ empty <- data %>% filter(n_tokens_content == 0)
 sum(empty$global_subjectivity)
 sum(empty$avg_positive_polarity)
 
-num_videos
-
-#this causes an error for me, I just commented it out so I can knit the doc
-
 detach(num_summary)
 
-ggplot(data = world, aes(x = shares)) + 
-  geom_histogram(fill = day)
 
 plot(data$timedelta, data$shares)
-
-
 ```
 
 
@@ -337,16 +330,19 @@ test_set <- world[test, ]
 preProcValues <- preProcess(train_set, method = c("center", "scale"))
 train_set_std <- predict(preProcValues, train_set)
 
+# huge range, 35 to 284700
+train_log <-train_set%>% mutate(shares = log(shares))
+getSummaries(train_set$shares)
+
+test_log <-test_set%>% mutate(shares = log(shares))
+
 # I think this boxplot says a lot, plenty of outliers that just dwarf the
 # majority of the shares
-ggplot(data = world, aes(shares)) +
+ggplot(data = train_set, aes(shares)) +
   geom_boxplot()
 
 # transform the shares variable by log
-# huge range, 35 to 284700
-train_log <-train_set%>% mutate(shares = log(shares))
-getSummaries(train_log$shares)
-
+# makes a huge difference in readability of these graphs
 ggplot(data = train_log, aes(shares, timedelta)) +
   geom_point(aes(color = day))
 
@@ -376,22 +372,21 @@ par(mfrow = c(2, 2))
 plot(lm_full)
 
 
+# best model I found
 lm_log_full <- lm(shares~., data = train_log)
 summary(lm_log_full)
 # still not a great linear model plot, but a heck of a lot better than before
 plot(lm_log_full)
+lm_log_pred <- predict(lm_log_full, test_log)
+lm_log_MSE <- sqrt(mean((rf_SigPred_Pred-train_set$shares)^2))
+lm_log_MSE
 
 
-# all of the significant variables from the full model
-lm_sig <- lm(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs
-             + average_token_length + kw_min_avg + kw_max_avg + kw_avg_avg + max_negative_polarity, 
-             data = train_log)
-summary(lm_sig)
-
-lm_sig_subset <- lm(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs
-             + average_token_length + max_negative_polarity, 
-             data = train_set)
-summary(lm_sig_subset)
+### Not as good model as above (based on Adj-R Squares)
+#lm_sig_subset <- lm(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs
+#             + average_token_length + max_negative_polarity, 
+#             data = train_set)
+#summary(lm_sig_subset)
 
 
 ```
@@ -408,6 +403,8 @@ Setting up parallel processing to reduce the time it takes to run random forests
 
 ```{r cache=TRUE}
 
+
+# Holding pattern, I'm thinking I can automate this process to choose the best random forest to then attempt cross validation on - this may go away though. 
 # I ran these models first because the cross-validation takes forever
 rfFit <- randomForest(shares~., data = train_set, mtry = ncol(train_set)/3, 
                       ntree = 200, importance = TRUE)
@@ -465,11 +462,27 @@ stopCluster(cl)
 #}
 ```
 
+
+### Boosted Trees
+
+
+
+
+
+### Best Model
+
+
+
+
+
+
 ## Automation of R Markdown
 ```{r}
-topic<-as.vector(unique(data$topic))
+subj_topics<-unique(data$topic)
+output_file <- paste0(subj_topics, ".html")
 
+## First have to build this function
+params <- lapply(subj_topics, FUN = function(x){list(team = x)})
 
-# Turn all of the above into a function, then use lapply on the render. 
 ```
 
