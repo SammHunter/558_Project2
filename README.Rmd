@@ -9,21 +9,27 @@ output: html_document
 knitr::opts_chunk$set(eval = TRUE, echo = TRUE, message = FALSE, warning = FALSE)
 ```
 
+
 # Introduction
+
 
 The following space is reserved for the introduction.
 
+
 The packages used in this report are:
+
 
 ```{r}
 library(tidyverse)
 library(caret)
 
-# use for subset variable selection
-library(leaps)
+# used for randomForests before I run on CV
+library(randomForest)
 
 # use this for parallel computing
 library(parallel)
+# also for parallel computing. I will look to see if it's the same later
+library(doParallel)
 
 # To use Kable for good looking data print out
 library(knitr)
@@ -31,6 +37,8 @@ library(knitr)
 
 
 Reading in the data
+
+
 ```{r}
 # read in raw data
 data <- read_csv("OnlineNewsPopularity.csv")
@@ -78,12 +86,17 @@ err <- data %>% filter(topic == "error")
 
 # EDA - overall exploration
 
+
 Variables to ignore - url 
 
+
 I did pull out all the variables from this, but I'm just printing the ones that may present problems when we analyze them
+
+
 ```{r}
-# too big?
-#plot(data)
+# creating the new data set that only references the desired topic, and then we obviously don't need the topic as it's own variable anymore (they'll all contain the same value)
+world <- data %>% filter(topic == "world") %>% select(!topic, -url)
+
 
 # creating a function to return Tukey's five number summary plus the mean
 getSummaries <- function(vector){
@@ -93,7 +106,7 @@ getSummaries <- function(vector){
 }
 
 # pulling out the numeric columns into their own data set so we can get Tukey's five number summary plus the mean for each of them
-num_cols <- select_if(data, is.numeric)
+num_cols <- select_if(world, is.numeric)
 num_summary <- lapply(num_cols, getSummaries)
 
 
@@ -120,26 +133,16 @@ sum(empty$avg_positive_polarity)
 
 num_videos
 
-#hist(shares) this causes an error for me, I just commented it out so I can knit the doc
+#this causes an error for me, I just commented it out so I can knit the doc
 
 detach(num_summary)
 
-sref <- data %>% filter(self_reference_avg_sharess >= 0)
-sref
-
-correlation <- cor(num_cols)
-correlation
+ggplot(data = world, aes(x = shares)) + 
+  geom_histogram(fill = day)
 
 plot(data$timedelta, data$shares)
 
-# sorting examples using the mtcars dataset
-attach(data)
 
-# sort by mpg
-newdata <- data[order(-shares),]
-head(newdata)
-
-detach(data)
 ```
 
 
@@ -318,8 +321,6 @@ print(chi_tst)
 # Preprocessing the Data for Manipulation
 
 ```{r}
-# creating the new data set that only references the desired topic, and then we obviously don't need the topic as it's own variable anymore (they'll all contain the same value)
-world <- data %>% filter(topic == "world") %>% select(!topic, -url)
 
 # split the data into a training and test set 
 set.seed(214)
@@ -336,19 +337,22 @@ test_set <- world[test, ]
 preProcValues <- preProcess(train_set, method = c("center", "scale"))
 train_set_std <- predict(preProcValues, train_set)
 
-ggplot(data = world, aes(shares)) +
-  geom_histogram()
-
 # I think this boxplot says a lot, plenty of outliers that just dwarf the
 # majority of the shares
 ggplot(data = world, aes(shares)) +
   geom_boxplot()
 
+# transform the shares variable by log
 # huge range, 35 to 284700
-getSummaries(world$shares)
+train_log <-train_set%>% mutate(shares = log(shares))
+getSummaries(train_log$shares)
 
-ggplot(data = world, aes(shares, timedelta)) +
+ggplot(data = train_log, aes(shares, timedelta)) +
   geom_point(aes(color = day))
+
+ggplot(data = train_log, aes(shares)) +
+  geom_histogram(aes(fill = day)) + 
+  facet_wrap(vars(day))
 ```
 
 
@@ -372,87 +376,100 @@ par(mfrow = c(2, 2))
 plot(lm_full)
 
 
+lm_log_full <- lm(shares~., data = train_log)
+summary(lm_log_full)
+# still not a great linear model plot, but a heck of a lot better than before
+plot(lm_log_full)
+
+
+# all of the significant variables from the full model
 lm_sig <- lm(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs
              + average_token_length + kw_min_avg + kw_max_avg + kw_avg_avg + max_negative_polarity, 
-             data = train_set)
+             data = train_log)
 summary(lm_sig)
 
-lm_6_sig <- lm(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs
+lm_sig_subset <- lm(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs
              + average_token_length + max_negative_polarity, 
              data = train_set)
-summary(lm_sig)
+summary(lm_sig_subset)
 
-
-lm_day <- lm(shares ~ day, data=train_set_std)
-summary(lm_day)
-
-lm_lda <- lm(shares~LDA_00+LDA_01+LDA_02+LDA_03+LDA_04, data=train_set_std)
-summary(lm_lda)
 
 ```
 
 
+When we look at the residual plots from the linear regression we do have a goal in mind. For the residual plot (top left), we want to see **no** trends. 
+
+
+
 ### Random Forests
+
 
 Setting up parallel processing to reduce the time it takes to run random forests. 
 
-```{r cache=FALSE}
+```{r cache=TRUE}
+
+# I ran these models first because the cross-validation takes forever
+rfFit <- randomForest(shares~., data = train_set, mtry = ncol(train_set)/3, 
+                      ntree = 200, importance = TRUE)
+rfPred <- predict(rfFit, newdata = dplyr::select(train_set, -shares))
+# MSE 2618.834
+sqrt(mean((rfPred-train_set$shares)^2))
+
+
+ranfor_sig <- randomForest(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs
+             + average_token_length + kw_min_avg + kw_max_avg + kw_avg_avg + max_negative_polarity,
+             data = train_set, mtry =  ncol(train_set)/3, ntree = 200, importance = TRUE)
+ranfor_sig
+ranfor_Pred <- predict(ranfor_sig, newdata = dplyr::select(train_set, -shares))
+# 2686.744
+sqrt(mean((ranfor_Pred-train_set$shares)^2))
+
+
+ranfor_sig_sub <- randomForest(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs
+             + average_token_length + kw_avg_avg + max_negative_polarity,
+             data = train_set, mtry =  ncol(train_set)/3, ntree = 200, importance = TRUE)
+ranfor_Pred_sub <- predict(ranfor_sig_sub, newdata = dplyr::select(train_set, -shares))
+# 2618.21, pretty small comparatively so this is what I'm going to use for the cross-validation training
+sqrt(mean((ranfor_Pred_sub-train_set$shares)^2))
+
+
 ### I have 8 cores, but this is from lecture - sam
-#library(parallel)
-#detectCores()
-#cluster <- makeCluster(4)
-
-
-# Mark's link from Moodle
-library(doParallel)
-cl <- makePSOCKcluster(5)
+cl <- makePSOCKcluster(6)
 registerDoParallel(cl)
 
 ## All subsequent models are then run in parallel
 
-rf_LDA <- train(shares ~ LDA_00+LDA_01+LDA_02+LDA_03+LDA_04, data = train_set, method = "rf", 
-              trControl = trainControl
-               (method = "repeatedcv", number = 5, repeats = 3), 
-              preProcess = c("center", "scale"), 
-              tuneGrid = data.frame(mtry = 1:15))
-# Smallest RMSE is 5698.148 - so, so bad
-rf_LDA
 
-rf_SigPred <- train(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs
-             + average_token_length + kw_min_avg + kw_max_avg + kw_avg_avg + max_negative_polarity,
+# these mtry's were chosen based on previous runs that selected 1 as the best, and the suggested 
+# sqrt(p) -7 and 8, depending on how we count non-numeric vars and p/3 - mtry = 16, 17, and 18, 
+# that are usually some of the best tuning parameters 
+rf_SigPred <- train(shares ~ n_tokens_title + n_non_stop_words + num_hrefs 
+                    + num_imgs + average_token_length + kw_avg_avg + max_negative_polarity,
              data = train_set, method = "rf", 
               trControl = trainControl
                (method = "repeatedcv", number = 5, repeats = 3), 
               preProcess = c("center", "scale"), 
               tuneGrid = data.frame(mtry = c(1, 7, 8, 16, 17, 18)))
-rf_SigPred
+# Smallest model for this one is mtry = 1
+rf_SigPred_Pred <- predict(rf_SigPred, newdata = dplyr::select(train_set, -shares))
+rf_MSE <- sqrt(mean((rf_SigPred_Pred-train_set$shares)^2))
 
-library(randomForest)
-
-# MSE 2618.834
-rfFit <- randomForest(shares~., data = train_set, mtry = ncol(train_set)/3, 
-                      ntree = 200, importance = TRUE)
-rfPred <- predict(rfFit, newdata = dplyr::select(train_set, -shares))
-sqrt(mean((rfPred-train_set$shares)^2))
-
-# MSE 2618.834
-rfFit <- randomForest(shares~., data = train_set, mtry = ncol(train_set)/3, 
-                      ntree = 200, importance = TRUE)
-rfPred <- predict(rfFit, newdata = dplyr::select(train_set, -shares))
-sqrt(mean((rfPred-train_set$shares)^2))
 
 ## When you are done:
 stopCluster(cl)
 
-unregister_dopar <- function() {
-  env <- foreach:::.foreachGlobals
-  rm(list=ls(name=env), pos=env)
-}
-
-# Hopefully we can bring this number wayyyyyy down. 
-rf_SigPred <- predict(model, newdata = train_set)
-treeRMSE <- sqrt(mean((rf_pred-train_set$shares)^2))
-treeRMSE
+# sometimes you need to run this to get out of the cluster/run without the cluster
+#unregister_dopar <- function() {
+#  env <- foreach:::.foreachGlobals
+#  rm(list=ls(name=env), pos=env)
+#}
 ```
 
+## Automation of R Markdown
+```{r}
+topic<-as.vector(unique(data$topic))
+
+
+# Turn all of the above into a function, then use lapply on the render. 
+```
 
