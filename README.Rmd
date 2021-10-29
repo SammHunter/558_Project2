@@ -408,7 +408,10 @@ Setting up parallel processing to reduce the time it takes to run random forests
 
 ```{r cache=TRUE}
 
+<<<<<<< HEAD
 # I ran these models first because the cross-validation takes forever
+=======
+>>>>>>> 9060071cc39fd334a70a73471d04c9bab4a4148e
 rfFit <- randomForest(shares~., data = train_set, mtry = ncol(train_set)/3, 
                       ntree = 200, importance = TRUE)
 rfPred <- predict(rfFit, newdata = dplyr::select(train_set, -shares))
@@ -429,20 +432,31 @@ ranfor_sig_sub <- randomForest(shares ~ n_tokens_title + n_non_stop_words + num_
              + average_token_length + kw_avg_avg + max_negative_polarity,
              data = train_set, mtry =  ncol(train_set)/3, ntree = 200, importance = TRUE)
 ranfor_Pred_sub <- predict(ranfor_sig_sub, newdata = dplyr::select(train_set, -shares))
+<<<<<<< HEAD
 # 2618.21, pretty small comparatively so this is what I'm going to use for the cross-validation training
+=======
+# 2618.21, pretty small comparitively so this is what I'm going to use for the cross-validation training
+>>>>>>> 9060071cc39fd334a70a73471d04c9bab4a4148e
 sqrt(mean((ranfor_Pred_sub-train_set$shares)^2))
 
 
 ### I have 8 cores, but this is from lecture - sam
+<<<<<<< HEAD
+=======
+
+>>>>>>> 9060071cc39fd334a70a73471d04c9bab4a4148e
 cl <- makePSOCKcluster(6)
 registerDoParallel(cl)
 
 ## All subsequent models are then run in parallel
 
+<<<<<<< HEAD
 
 # these mtry's were chosen based on previous runs that selected 1 as the best, and the suggested 
 # sqrt(p) -7 and 8, depending on how we count non-numeric vars and p/3 - mtry = 16, 17, and 18, 
 # that are usually some of the best tuning parameters 
+=======
+>>>>>>> 9060071cc39fd334a70a73471d04c9bab4a4148e
 rf_SigPred <- train(shares ~ n_tokens_title + n_non_stop_words + num_hrefs 
                     + num_imgs + average_token_length + kw_avg_avg + max_negative_polarity,
              data = train_set, method = "rf", 
@@ -454,6 +468,10 @@ rf_SigPred <- train(shares ~ n_tokens_title + n_non_stop_words + num_hrefs
 rf_SigPred_Pred <- predict(rf_SigPred, newdata = dplyr::select(train_set, -shares))
 rf_MSE <- sqrt(mean((rf_SigPred_Pred-train_set$shares)^2))
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 9060071cc39fd334a70a73471d04c9bab4a4148e
 
 ## When you are done:
 stopCluster(cl)
@@ -463,6 +481,14 @@ stopCluster(cl)
 #  env <- foreach:::.foreachGlobals
 #  rm(list=ls(name=env), pos=env)
 #}
+<<<<<<< HEAD
+=======
+
+# Hopefully we can bring this number wayyyyyy down. 
+rf_SigPred <- predict(model, newdata = train_set)
+treeRMSE <- sqrt(mean((rf_pred-train_set$shares)^2))
+treeRMSE
+>>>>>>> 9060071cc39fd334a70a73471d04c9bab4a4148e
 ```
 
 ## Automation of R Markdown
