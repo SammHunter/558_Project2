@@ -279,9 +279,9 @@ plot_func(5)
 `r paste0("Looking at this plot between the number of shares of an article and ", as.character(correlation_tibble[5,1])," we can see that as ",as.character(correlation_tibble[5,1]), " goes up, the number of times an article is shared generally ", if_else(correlation_tibble[5,2] > 0,"increases","descreases"),".")`
 
 
-Now that I have looked at the numeric variables, I want to check out the day variable to see if the day of the week has any effect on the number of times an article was shared. To do this I am going to preform a Chi-Squared test! Before I can preform that test however, I am going to create a categorical version of the shares variable called shares_quart that assigns the number of shares to its quartile value. I.E if an articles shares fall into the first quartile it will be assigned "1" etc.
+Now that I have looked at the numeric variables, I want to check out the day variable to see if the day of the week has any effect on the number of times an article was shared. To do this I am going to preform a Chi-Squared test! Before I can preform that test however, I am going to create a categorical version of the shares variable called shares_quart that assigns the number of shares to its quartile value. I.E if an articles shares fall into the first quartile it will be assigned "Q1" etc.
 
-Then I build a contingency table between what day of the week an article was published and what quartile it ends up in. Fianlly I preform the Chi-Sqaured test.
+Then I build a contingency table between what day of the week an article was published and what quartile it ends up in. Finally I preform the Chi-Sqaured test.
 ```{r evan quartiles}
 
 # Keep just the day and number of shares
@@ -394,6 +394,42 @@ lm_log_MSE
 
 When we look at the residual plots from the linear regression we do have a goal in mind. For the residual plot (top left), we want to see **no** trends. 
 
+
+## Linear Model Evan
+
+This is not ready to go, but taking a break and pushing
+
+```{r evan lm}
+
+basc <- train(shares ~ .,
+             data = train_set,
+              preProcess = c("center","scale"),
+              method = "lm")
+
+basc$results
+
+
+test <- train(shares ~ LDA_02 + LDA_03 + num_imgs*n_tokens_content  + I(average_token_length^2) + kw_avg_avg + rate_negative_words*rate_positive_words
+                  + kw_max_avg + day + title_subjectivity ,
+              data = train_set,
+              preProcess = c("center","scale"),
+              method = "lm")
+
+test$results
+
+tst_pred <- predict(test,newdata = test_set)
+
+
+
+test2 <- train(shares ~ LDA_02 + LDA_03 + num_imgs*n_tokens_content  + I(average_token_length^2) + kw_avg_avg + rate_negative_words*rate_positive_words
+                  + kw_max_avg + day + title_subjectivity  ,
+              data = train_set,
+              preProcess = c("center","scale"),
+              method = "lm")
+
+test2$results
+
+```
 
 
 ### Random Forests
