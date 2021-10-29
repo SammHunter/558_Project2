@@ -378,7 +378,7 @@ summary(lm_log_full)
 # still not a great linear model plot, but a heck of a lot better than before
 plot(lm_log_full)
 lm_log_pred <- predict(lm_log_full, test_log)
-lm_log_MSE <- sqrt(mean((rf_SigPred_Pred-train_set$shares)^2))
+lm_log_MSE <- sqrt(mean((lm_log_MSE-test_log$shares)^2))
 lm_log_MSE
 
 
