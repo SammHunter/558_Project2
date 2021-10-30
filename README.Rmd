@@ -35,6 +35,9 @@ library(doParallel)
 
 # To use Kable for good looking data print out
 library(knitr)
+
+# For boosted tree
+library(gbm)
 ```
 
 
@@ -536,12 +539,48 @@ stopCluster(cl)
 
 ### Boosted Trees
 
+```{r boosted tree evan}
+
+
+# Define all tuning parameters
+n.trees <- c(100,200,300,400,500)
+interaction.depth <- c(1:10)
+shrinkage <- 0.1
+n.minobsinnode <- 10
+
+
+trctrl <- trainControl(method = "cv", number = 10)
+
+
+# build a data set with the tuning parameters.
+tune_df <- expand.grid(n.trees,interaction.depth,shrinkage,n.minobsinnode)
+
+# Give the tuning parameters the right names
+names(tune_df) <- c("n.trees","interaction.depth","shrinkage","n.minobsinnode")
+
+# Build model
+boost_tree_fit <- train(shares ~ .,
+                       data = train_set,
+                       method = "gbm",
+                       trControl = trctrl,
+                       preProcess = c("center","scale"),
+                       tuneGrid = tune_df)
+
+# Predict
+boost_tree_pred <- predict(boost_tree_fit,test_set)
+
+
+
+```
 
 
 
 
 ### Best Model
 
+```{r}
+
+```
 
 
 
