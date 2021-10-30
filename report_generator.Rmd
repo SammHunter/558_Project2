@@ -18,7 +18,7 @@ The following space is reserved for the introduction.
 
 
 
-This is a report about which model to use when trying to predict the number of social media shares of an article with a topic of, (insert topic here), based on a myriad of predictors.
+This is a report about which model to use when trying to predict the number of social media shares of an article with a topic of, `r params[[2]]$topics`, based on a myriad of predictors.
 
 The data to build this report originally comes from [Mashable](mashable.com), and includes a variety of data about articles on their site during a two year period. Some of the data in this dataset are things like, the topic of the article, how long the article is, what day of the week the article was published on, how long ago it was published and a variety of other things.
 
@@ -26,30 +26,31 @@ The data to build this report originally comes from [Mashable](mashable.com), an
 To read more about all of the data included in the dataset read [here](https://archive.ics.uci.edu/ml/datasets/Online+News+Popularity). 
 
 
-In this report we make models that include some of the predictor variables and others that include all of the predictor variables. The variables we specifically selected are shown below with their definitions:  
+In this report we make models that include some of the predictor variables and others that include all of the predictor variables. Some variables we found to be especially helpful in predictions are shown below with their definitions:  
 
-* `LDA_02` - closeness to LDA Topic 2.  
-* `LDA_03` - closeness to LDA Topic 3.  
-* `num_imgs` - Number of Images in an article.  
-* `kw_avg_avg` -  Avg. keyword (avg. shares).  
-* `n_tokens_content` - Number of words in the article.  
+* `LDA_02`               - closeness to LDA Topic 2.  
+* `LDA_03`               - closeness to LDA Topic 3.  
+* `num_imgs`             - Number of Images in the article.  
+* `kw_avg_avg`           - Avg. keyword (avg. shares).  
+* `n_tokens_content`     - Number of words in the article.  
 * `average_token_length` - Average length of words in the article.  
-* `rate_negative_words` - Rate of positive words in the article.  
-* `rate_negative_words` - Rate of negative words in the article.  
-* `day` - A variable we create to signify what day of the week an article was published.  
-* `kw_max_avg` - Avg. keyword (max. shares).  
-* `title_subjectivity` - The subjectivity of the title of the article.
+* `rate_negative_words`  - Rate of positive words in the article.  
+* `rate_negative_words`  - Rate of negative words in the article.  
+* `day`                  - A variable we create to signify what day of the week an article was published.  
+* `kw_max_avg`           - Avg. keyword (max. shares).  
+* `title_subjectivity`   - The subjectivity of the title of the article.
 
 
 In this report we create the following models:  
 
-* A Linear Model with all predictor variables.  
-* A Linear Model with some selected predictor variables.  
-* A Boosted Tree Model with all predictor variables.  
-* A Boosted Tree Model with some selected predictor variables.  
-* A Random Forest Model with...
+* 1 Linear Model with all predictor variables.  
+* 2 Linear Models with some selected predictor variables.  
+* 1 Logistic Linear Model with all predictor varaibles.  
+* 1 Boosted Tree Model with all predictor variables.  
+* 1 Boosted Tree Model with some selected predictor variables.  
+* 1 Random Forest Model with some selected predictor variables.
 
-At the end of this report we decide on which model was the best for the (topic).
+At the end of this report we decide on which model was the best for the `r params[[2]]$topics`.
 
 
 The packages used in this report are:
@@ -81,7 +82,7 @@ library(gbm)
 
 # Data Processing
 
-Below we read in the data, add new variables, remove old ones, filter specifically for (topic), and then we go ahead and split the data into the test and train data sets for model training and testing. 
+Below we read in the data, add new variables, remove old ones, filter specifically for the `r params[[2]]$topics` topic, and then we go ahead and split the data into the test and train data sets for model training and testing. 
 
 
 ```{r message = FALSE, echo=FALSE}
@@ -154,7 +155,7 @@ test_log <- test_set %>% mutate(shares = log(shares))
 
 
 
-# EDA - 
+# Exploratory Data Analysis
 
 
 **NOTE: I combined our EDAs. I though it would be nice to go from a general exploration of the data, to the more specific qualities of the data and predictors.-Sam**
@@ -189,8 +190,7 @@ The boxplot in the top left is a boxplot of the number of shares, and the boxplo
 
 
 
-We can combine our EDAs into one if you'd like or we can do separate either is fine with me. 
-
+Here we take a look at the correlation of all variables for the `r params[[2]]$topics` topic with `shares`.
 
 ```{r evan eda 1}
 
@@ -235,7 +235,7 @@ kable(correlation_tibble)
 
 ```
 
-From checking the correlation of all variables it appears that the following five variables have the highest correlation with shares:  
+From checking the correlation of all variables it appears that the following five variables have the highest correlation with shares are:  
 
 1. `r as.character(correlation_tibble[1,1])`  
 1. `r as.character(correlation_tibble[2,1])`  
@@ -418,9 +418,8 @@ lm_9_rmse <- sqrt(mean((lm_full_pred-test_set$shares)^2))
 
 
 
-## Linear Model Evan
 
-Might continue to tinker with this, but this is as good as its getting rn.
+For this next linear model, we started with the five of the highest correlation variables, and then added a few more that seemed to increase the models effectiveness. Including some interactions between them.
 
 ```{r evan lm}
 
@@ -527,7 +526,12 @@ stopCluster(cl)
 ```
 
 
-### Boosted Trees
+### Boosted Tree
+
+A boosted tree is another type of ensemble based supervised learning method. Much like with random forests, this model creates a bunch of different trees and then averages the predictions. The difference comes in with the way trees are grown, in this boosted tree model the next tree grown is a result of the last tree. This results in the model learning as it goes. The boosted tree continually tries to improve on the previous model created, so in the end the final or "best" model is a modified version of the originally created model.
+
+
+Below I create two boosted tree models, the first is a model with every predictor variable included, the second is with some selected variables to try and improve on the model with all predictors. For both models I used 10 fold cross validation, number of trees ranging from 100 to 500, an interation depth from 1 to 10, shrinkage of 0.1, and min obs in node of 10.
 
 ```{r boosted tree evan}
 
@@ -579,7 +583,6 @@ boost_tree_pred <- predict(boost_tree_fit,test_set)
 # Check RMSE for full model
 boost_tree_rmse <- sqrt(mean((boost_tree_pred - test_set$shares)^2))
 
-# RMSE to beat 6479.53709
 
 ```
 
@@ -616,7 +619,7 @@ kable(model_comp)
 
 ```
 
-From this table we can see that for the (insert params$topic here) topic the best model is the `r as.character(model_comp[1,1])` with an RMSE value of `r round(model_comp[1,2],digits = 4)`
+From this table we can see that for the `r params[[2]]$topics` topic the best model is the `r as.character(model_comp[1,1])` with an RMSE value of `r round(model_comp[1,2],digits = 4)`
 
 
 
