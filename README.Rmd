@@ -103,7 +103,7 @@ I did pull out all the variables from this, but I'm just printing the ones that 
 
 #topic_selection <- function(subj, ...){
 
-subject <- data %>%  filter(topic == params$topic) %>% select(!topic, -url)
+subject <- data %>%  filter(topic == params[[2]]$topics) %>% select(!topic, -url)
 
 # split the data into a training and test set 
 set.seed(214)
@@ -365,7 +365,7 @@ Linear regression is a simple supervised learning method for quantitative respon
 Within this dataset, we have 50 predictors. Three of these predictors are character variables - url of the article (url), the day the article was published (day), and the topic of the article (topic). We won't include url as a predictor since that seems to be more of an identifier variables rather than an attribute of the article. We also are analyzing the topics separately from each other so we won't include that in our linear model either. The rest of the predictors are numeric.
 
 
-```{r}
+```{r eval = FALSE}
 # Adjusted R Square is 0.03 & Residual Std Error = 0.59
 # Horrible
 lm_full <- lm(shares~., data=train_set)
@@ -405,7 +405,7 @@ When we look at the residual plots from the linear regression we do have a goal 
 This is not ready to go, but taking a break and pushing
 
 
-```{r evan lm}
+```{r eval = FALSE}
 
 basc <- train(shares ~ .,
              data = train_set,
@@ -526,7 +526,7 @@ stopCluster(cl)
 
 ### Boosted Trees
 
-```{r boosted tree evan}
+```{r eval = FALSE}
 
 
 # Define all tuning parameters
