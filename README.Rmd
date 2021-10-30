@@ -98,34 +98,27 @@ Variables to ignore - url
 I did pull out all the variables from this, but I'm just printing the ones that may present problems when we analyze them
 
 
-```{r eval = FALSE}
+```{r}
 # creating the new data set that only references the desired topic, and then we obviously don't need the topic as it's own variable anymore (they'll all contain the same value)
 
-topic_selection <- function(subj, ...){
+#topic_selection <- function(subj, ...){
 
-  # condition logic here where we either say if subj = world then do, else, ect
-  subject <- data %>% filter(topic == "world") %>% select(!topic, -url)
-  
-  # split the data into a training and test set 
-  set.seed(214)
+subject <- data %>%  filter(topic == params$topic) %>% select(!topic, -url)
 
-  # splitting it into 80% for training and 20% for testing
-  train <- sample(1:nrow(subject), size = nrow(subject)*0.7)
-  test <- setdiff(1:nrow(subject), train)
+# split the data into a training and test set 
+set.seed(214)
 
-  # Actually subsetting
-  train_set <- subject[train, 1:48]
-  test_set <- subject[test, ]
+# splitting it into 70% for training and 30% for testing
+train <- sample(1:nrow(subject), size = nrow(subject)*0.7)
+test <- setdiff(1:nrow(subject), train)
 
-  # creating a log data subset as well
-  train_log <-train_set%>% mutate(shares = log(shares))
-      getSummaries(train_set$shares)
-  test_log <-test_set%>% mutate(shares = log(shares))
-  
-  return(list(subject, train_set, test_set, train_log, test_log))
-}
+# Actually subsetting
+train_set <- subject[train, 1:48]
+test_set <- subject[test, ]
 
-topic_selection(world)
+# creating a log data subset as well
+train_log <-train_set %>% mutate(shares = log(shares))
+test_log <-test_set %>% mutate(shares = log(shares))
 
 
 # creating a function to return Tukey's five number summary plus the mean
@@ -174,10 +167,6 @@ We can combine our EDAs into one if you'd like or we can do separate either is f
 
 Also I think we are supposed to filter for the specific topic before EDA for automation, so I am going to do that here we can adjust this if I am wrong however.
 ```{r evan eda 1}
-# filter data by topic and remove that column and url
-filtered_data <- data %>%
-  filter(topic == "world") %>%  # the filtering here would need to be automated with params$topic but since this is just for the world part thats what I have here.
-  select(-topic,-url)
 
 # Checking correlation with each numeric var and shares
 
@@ -340,17 +329,11 @@ print(chi_tst)
 `r paste0("The Chi-Squared test resulted in a P-Value of ", chi_tst$p.value,". Using a signifigance level of 0.05 it appears that the day of the week that an article is published ", if_else(chi_tst$p.value > 0.05, "does not", "does"), " have a statistically significant impact on the amount of times an article is shared.") `
 
 
-# Preprocessing the Data for Manipulation
 
 ```{r}
-
-```
-
-
-```{r}
-  # I think this boxplot says a lot, plenty of outliers that just dwarf the
-  # majority of the shares
-  ggplot(data = train_set, aes(shares)) +
+# I think this boxplot says a lot, plenty of outliers that just dwarf the
+# majority of the shares
+ggplot(data = train_set, aes(shares)) +
   geom_boxplot()
 
 # transform the shares variable by log
@@ -415,9 +398,12 @@ lm_log_MSE
 
 When we look at the residual plots from the linear regression we do have a goal in mind. For the residual plot (top left), we want to see **no** trends. The normal QQ plot should have points that generally follow the prescribed line on the plot. Many QQ plots do have points that stray at the beginning of the QQ Plots line. In the scale-location plots, the residuals should be evenly spread. Finally, our Cook's plot should have all of its points within Cook's distance. 
 
+
 ## Linear Model Evan
 
+
 This is not ready to go, but taking a break and pushing
+
 
 ```{r evan lm}
 
@@ -459,6 +445,7 @@ Random forests is an ensemble learning method that works by averaging across man
 
 
 Setting up parallel processing to reduce the time it takes to run random forests. 
+
 
 ```{r, cache = TRUE, eval = FALSE}
 # Holding pattern, I'm thinking I can automate this process to choose the best random forest to then attempt cross validation on - this may go away though. 
@@ -589,7 +576,7 @@ boost_tree_pred <- predict(boost_tree_fit,test_set)
 ## Automation of R Markdown
 ```{r eval = FALSE}
 subj_topics<-unique(data$topic)
-output_file <- paste0(subj_topics, ".html")
+output_file <- paste0(subj_topics, "_report")
 
 ## First have to build this function
 params <- lapply(subj_topics, FUN = function(x){list(team = x)})
@@ -601,6 +588,27 @@ rmarkdown::render("README.Rmd",
                     toc = TRUE, 
                     toc_depth = 6)
 )
+
+
+
+#get unique teams
+teamIDs <- unique(NFLData$awayTeam)
+#create filenames
+output_file <- paste0(teamIDs, ".html")
+#create a list for each team with just the team name parameter
+params = lapply(teamIDs, FUN = function(x){list(team = x)})
+
+#put into a data frame 
+reports <- tibble(output_file, params)
+
+reports
+
+library(rmarkdown)
+## #need to use x[[1]] to get at elements since tibble doesn't simplify
+apply(reports, MARGIN = 1,
+      FUN = function(x){
+        render(input = "files/NFL.Rmd", output_file = x[[1]], params = x[[2]])
+      })
 
 ```
 
