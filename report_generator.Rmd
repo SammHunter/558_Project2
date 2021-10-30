@@ -437,6 +437,19 @@ When we look at the residual plots from the linear regression we do have a goal 
 Might continue to tinker with this, but this is as good as its getting rn.
 
 ```{r evan lm}
+# Build Full Model
+
+lm_full_fit <- train(shares ~ . ,
+              data = train_set,
+              preProcess = c("center","scale"),
+              method = "lm")
+
+
+lm_full_pred <- predict(lm_full_fit,newdata = test_set)
+
+# check RMSE of prediction
+lm_full_rmse <- sqrt(mean((lm_full_pred-test_set$shares)^2))
+
 
 
 # Fit model
@@ -554,9 +567,8 @@ interaction.depth <- c(1:10)
 shrinkage <- 0.1
 n.minobsinnode <- 10
 
-
+# Select train control methods
 trctrl <- trainControl(method = "cv", number = 10)
-
 
 # build a data set with the tuning parameters.
 tune_df <- expand.grid(n.trees,interaction.depth,shrinkage,n.minobsinnode)
@@ -564,7 +576,24 @@ tune_df <- expand.grid(n.trees,interaction.depth,shrinkage,n.minobsinnode)
 # Give the tuning parameters the right names
 names(tune_df) <- c("n.trees","interaction.depth","shrinkage","n.minobsinnode")
 
-# Build model
+# Build full model
+
+boost_tree_full_fit <- train(shares ~ . ,
+                       data = train_set,
+                       method = "gbm",
+                       trControl = trctrl,
+                       preProcess = c("center","scale"),
+                       tuneGrid = tune_df)
+
+# Predict full model
+boost_tree_pred <- predict(boost_tree_full_fit,test_set)
+
+# Check RMSE for full model
+boost_tree_full_rmse <- sqrt(mean((boost_tree_full_pred - test_set$shares)^2))
+
+
+
+# Build selected model
 boost_tree_fit <- train(shares ~ LDA_02 + LDA_03 + num_imgs + kw_avg_avg + average_token_length +
                           rate_negative_words + day ,
                        data = train_set,
@@ -573,9 +602,10 @@ boost_tree_fit <- train(shares ~ LDA_02 + LDA_03 + num_imgs + kw_avg_avg + avera
                        preProcess = c("center","scale"),
                        tuneGrid = tune_df)
 
-# Predict
+# Predict selected mode
 boost_tree_pred <- predict(boost_tree_fit,test_set)
 
+# Check RMSE for full model
 boost_tree_rmse <- sqrt(mean((boost_tree_pred - test_set$shares)^2))
 
 # RMSE to beat 6479.53709
@@ -587,11 +617,35 @@ boost_tree_rmse <- sqrt(mean((boost_tree_pred - test_set$shares)^2))
 
 ### Best Model
 
-```{r}
+
+To determine the best model to use for predicting the amount of shares of an article about (will insert params$topic here) we have decided to measure them against each other using the Root Mean Square Error (RMSE). To read about RMSE I suggest [this link](https://www.statisticshowto.com/probability-and-statistics/regression-analysis/rmse-root-mean-square-error/) as it provides a general explanation of what it is and also has a video!
+
+
+Before we can determine the best model we have to compare them. So that is what we do here, first we establish the name of each model, and then we add the name and their corresponding RMSEs to a tibble for comparison!
+```{r model selection}
+
+# Names of models
+model_names <- c("Full Linear Model", "Selected Linear Model","Full Boosted Tree Model", "Selected Boosted Tree Model", "Random Forest Model") # these can be added to, just getting the first try at this down
+
+# RMSE values
+model_rmses <- c(lm_full_rmse,lm2_rmse,boost_tree_full_rmse,boost_tree_rmse,rf_MSE)  # these can be added to
+
+# Combine into tibble
+model_comp <- tibble(model_names,model_rmses)
+
+#Arrange by RMSE value in ascending order
+model_comp <- model_comp %>%
+  arrange(model_rmses)
+
+# Change names for a good looking print out.
+names(model_comp) <- c("Name of Model","RMSE of Model")
+
+# Print table.
+kable(model_comp)
 
 ```
 
-
+From this table we can see that for the (insert params$topic here) topic the best model is the `r as.character(model_comp[1,1])` with an RMSE value of `r round(model_comp[1,2],digits = 4)`
 
 
 
