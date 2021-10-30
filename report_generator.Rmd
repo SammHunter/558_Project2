@@ -53,7 +53,9 @@ data <- read_csv("OnlineNewsPopularity.csv")
 # add in day of week variable called "day"
 # check every indicator variable for a 1, once it hits a 1
 # the new variable day is defined as whatever day it is
-# if no 1 are present saves the day variable as "error"
+# if no 1 are present saves the day variable as "error".
+
+# This same process takes place with topic.
 data <- data %>%
   mutate(
     day = if_else(weekday_is_monday == 1, "monday",
@@ -71,7 +73,7 @@ data <- data %>%
                                                   if_else(data_channel_is_world == 1, "world", "other"))))))
     )
 
-# remove old day indicators
+# remove old day and topic indicators
 data <- data %>%
   select(!starts_with("weekday_is_"), -starts_with("data_channel_is_"))
 
@@ -88,6 +90,25 @@ table(data$topic)
 
 # these actually don't have a topic!
 err <- data %>% filter(topic == "other")
+
+# Filter data for specific topic, and then remove topic and url from dataset.
+filtered_data <- data %>%
+  filter(topic == "world") %>%  # this is where filtering for params will be needed
+  select(-url,-topic)
+
+# setting the seed
+  set.seed(214)
+
+  # splitting it into 70% for training and 30% for testing
+  train <- sample(1:nrow(filtered_data), size = nrow(filtered_data)*0.7)
+  test <- setdiff(1:nrow(filtered_data), train)
+
+  # Actually subsetting
+  train_set <- filtered_data[train,]
+  test_set <- filtered_data[test,]
+
+
+
 ```
 
 
@@ -176,12 +197,6 @@ We can combine our EDAs into one if you'd like or we can do separate either is f
 
 Also I think we are supposed to filter for the specific topic before EDA for automation, so I am going to do that here we can adjust this if I am wrong however.
 ```{r evan eda 1}
-# filter data by topic and remove that column and url
-filtered_data <- data %>%
-  filter(topic == "world") %>%  # the filtering here would need to be automated with params$topic but since this is just for the world part thats what I have here.
-  select(-topic,-url)
-
-# Checking correlation with each numeric var and shares
 
 # get names of all columns except day because that isn't numeric, and shares as that is the target variable
 col_names <- names(filtered_data)[1:46]
