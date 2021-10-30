@@ -18,6 +18,44 @@ The following space is reserved for the introduction.
 
 
 
+<<<<<<< HEAD
+=======
+This is a report about which model to use when trying to predict the number of social media shares of an article with a topic of, (insert topic here), based on a myriad of predictors.
+
+The data to build this report originally comes from [Mashable](mashable.com), and includes a variety of data about articles on their site during a two year period. Some of the data in this dataset are things like, the topic of the article, how long the article is, what day of the week the article was published on, how long ago it was published and a variety of other things.
+
+
+To read more about all of the data included in the dataset read [here](https://archive.ics.uci.edu/ml/datasets/Online+News+Popularity). 
+
+
+In this report we make models that include some of the predictor variables and others that include all of the predictor variables. The variables we specifically selected are shown below with their definitions:  
+
+* `LDA_02` - closeness to LDA Topic 2.  
+* `LDA_03` - closeness to LDA Topic 3.  
+* `num_imgs` - Number of Images in an article.  
+* `kw_avg_avg` -  Avg. keyword (avg. shares).  
+* `n_tokens_content` - Number of words in the article.  
+* `average_token_length` - Average length of words in the article.  
+* `rate_negative_words` - Rate of positive words in the article.  
+* `rate_negative_words` - Rate of negative words in the article.  
+* `day` - A variable we create to signify what day of the week an article was published.  
+* `kw_max_avg` - Avg. keyword (max. shares).  
+* `title_subjectivity` - The subjectivity of the title of the article.
+
+
+In this report we create the following models:  
+
+* A Linear Model with all predictor variables.  
+* A Linear Model with some selected predictor variables.  
+* A Boosted Tree Model with all predictor variables.  
+* A Boosted Tree Model with some selected predictor variables.  
+* A Random Forest Model with...
+
+At the end of this report we decide on which model was the best for the (topic).
+
+
+
+>>>>>>> b8bb16b477865be702e31196293a71fe49367d97
 The packages used in this report are:
 
 
@@ -42,7 +80,13 @@ library(gbm)
 ```
 
 
+<<<<<<< HEAD
 ### Reading in the data
+=======
+# Data Processing
+
+Below we read in the data, add new variables, remove old ones, filter specifically for (topic), and then we go ahead and split the data into the test and train datasets for model training and testing. 
+>>>>>>> b8bb16b477865be702e31196293a71fe49367d97
 
 
 ```{r message = FALSE, echo=FALSE}
@@ -80,6 +124,7 @@ data <- data %>%
 data$day <- as.factor(data$day)
 data$topic <- as.factor(data$topic)
 
+<<<<<<< HEAD
 #check structure to make sure is successful 
 str(data)
 
@@ -89,6 +134,27 @@ table(data$topic)
 
 # these actually don't have a topic!
 err <- data %>% filter(topic == "other")
+=======
+
+# Filter data for specific topic, and then remove topic and url from dataset.
+filtered_data <- data %>%
+  filter(topic == "world") %>%  # this is where filtering for params will be needed
+  select(-url,-topic)
+
+# setting the seed
+  set.seed(214)
+
+  # splitting it into 70% for training and 30% for testing
+  train <- sample(1:nrow(filtered_data), size = nrow(filtered_data)*0.7)
+  test <- setdiff(1:nrow(filtered_data), train)
+
+  # Actually subsetting
+  train_set <- filtered_data[train,]
+  test_set <- filtered_data[test,]
+
+
+
+>>>>>>> b8bb16b477865be702e31196293a71fe49367d97
 ```
 
 
@@ -146,6 +212,11 @@ The boxplot in the top left is a boxplot of the number of shares, and the boxplo
 
 
 
+<<<<<<< HEAD
+=======
+We can combine our EDAs into one if you'd like or we can do separate either is fine with me. 
+
+>>>>>>> b8bb16b477865be702e31196293a71fe49367d97
 ```{r evan eda 1}
 
 # get names of all columns except day because that isn't numeric, and shares as that is the target variable
@@ -359,6 +430,19 @@ When we look at the residual plots from the linear regression we do have a goal 
 Might continue to tinker with this, but this is as good as its getting rn.
 
 ```{r evan lm}
+# Build Full Model
+
+lm_full_fit <- train(shares ~ . ,
+              data = train_set,
+              preProcess = c("center","scale"),
+              method = "lm")
+
+
+lm_full_pred <- predict(lm_full_fit,newdata = test_set)
+
+# check RMSE of prediction
+lm_full_rmse <- sqrt(mean((lm_full_pred-test_set$shares)^2))
+
 
 
 # Fit model
@@ -476,9 +560,8 @@ interaction.depth <- c(1:10)
 shrinkage <- 0.1
 n.minobsinnode <- 10
 
-
+# Select train control methods
 trctrl <- trainControl(method = "cv", number = 10)
-
 
 # build a data set with the tuning parameters.
 tune_df <- expand.grid(n.trees,interaction.depth,shrinkage,n.minobsinnode)
@@ -486,7 +569,24 @@ tune_df <- expand.grid(n.trees,interaction.depth,shrinkage,n.minobsinnode)
 # Give the tuning parameters the right names
 names(tune_df) <- c("n.trees","interaction.depth","shrinkage","n.minobsinnode")
 
-# Build model
+# Build full model
+
+boost_tree_full_fit <- train(shares ~ . ,
+                       data = train_set,
+                       method = "gbm",
+                       trControl = trctrl,
+                       preProcess = c("center","scale"),
+                       tuneGrid = tune_df)
+
+# Predict full model
+boost_tree_pred <- predict(boost_tree_full_fit,test_set)
+
+# Check RMSE for full model
+boost_tree_full_rmse <- sqrt(mean((boost_tree_full_pred - test_set$shares)^2))
+
+
+
+# Build selected model
 boost_tree_fit <- train(shares ~ LDA_02 + LDA_03 + num_imgs + kw_avg_avg + average_token_length +
                           rate_negative_words + day ,
                        data = train_set,
@@ -495,9 +595,10 @@ boost_tree_fit <- train(shares ~ LDA_02 + LDA_03 + num_imgs + kw_avg_avg + avera
                        preProcess = c("center","scale"),
                        tuneGrid = tune_df)
 
-# Predict
+# Predict selected mode
 boost_tree_pred <- predict(boost_tree_fit,test_set)
 
+# Check RMSE for full model
 boost_tree_rmse <- sqrt(mean((boost_tree_pred - test_set$shares)^2))
 
 # RMSE to beat 6479.53709
@@ -509,11 +610,35 @@ boost_tree_rmse <- sqrt(mean((boost_tree_pred - test_set$shares)^2))
 
 ### Best Model
 
-```{r}
+
+To determine the best model to use for predicting the amount of shares of an article about (will insert params$topic here) we have decided to measure them against each other using the Root Mean Square Error (RMSE). To read about RMSE I suggest [this link](https://www.statisticshowto.com/probability-and-statistics/regression-analysis/rmse-root-mean-square-error/) as it provides a general explanation of what it is and also has a video!
+
+
+Before we can determine the best model we have to compare them. So that is what we do here, first we establish the name of each model, and then we add the name and their corresponding RMSEs to a tibble for comparison!
+```{r model selection}
+
+# Names of models
+model_names <- c("Full Linear Model", "Selected Linear Model","Full Boosted Tree Model", "Selected Boosted Tree Model", "Random Forest Model") # these can be added to, just getting the first try at this down
+
+# RMSE values
+model_rmses <- c(lm_full_rmse,lm2_rmse,boost_tree_full_rmse,boost_tree_rmse,rf_MSE)  # these can be added to
+
+# Combine into tibble
+model_comp <- tibble(model_names,model_rmses)
+
+#Arrange by RMSE value in ascending order
+model_comp <- model_comp %>%
+  arrange(model_rmses)
+
+# Change names for a good looking print out.
+names(model_comp) <- c("Name of Model","RMSE of Model")
+
+# Print table.
+kable(model_comp)
 
 ```
 
-
+From this table we can see that for the (insert params$topic here) topic the best model is the `r as.character(model_comp[1,1])` with an RMSE value of `r round(model_comp[1,2],digits = 4)`
 
 
 
