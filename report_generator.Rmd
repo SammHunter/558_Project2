@@ -18,6 +18,40 @@ The following space is reserved for the introduction.
 
 
 
+This is a report about which model to use when trying to predict the number of social media shares of an article with a topic of, (insert topic here), based on a myriad of predictors.
+
+The data to build this report originally comes from [Mashable](mashable.com), and includes a variety of data about articles on their site during a two year period. Some of the data in this dataset are things like, the topic of the article, how long the article is, what day of the week the article was published on, how long ago it was published and a variety of other things.
+
+
+To read more about all of the data included in the dataset read [here](https://archive.ics.uci.edu/ml/datasets/Online+News+Popularity). 
+
+
+In this report we make models that include some of the predictor variables and others that include all of the predictor variables. The variables we specifically selected are shown below with their definitions:  
+
+* `LDA_02` - closeness to LDA Topic 2.  
+* `LDA_03` - closeness to LDA Topic 3.  
+* `num_imgs` - Number of Images in an article.  
+* `kw_avg_avg` -  Avg. keyword (avg. shares).  
+* `n_tokens_content` - Number of words in the article.  
+* `average_token_length` - Average length of words in the article.  
+* `rate_negative_words` - Rate of positive words in the article.  
+* `rate_negative_words` - Rate of negative words in the article.  
+* `day` - A variable we create to signify what day of the week an article was published.  
+* `kw_max_avg` - Avg. keyword (max. shares).  
+* `title_subjectivity` - The subjectivity of the title of the article.
+
+
+In this report we create the following models:  
+
+* A Linear Model with all predictor variables.  
+* A Linear Model with some selected predictor variables.  
+* A Boosted Tree Model with all predictor variables.  
+* A Boosted Tree Model with some selected predictor variables.  
+* A Random Forest Model with...
+
+At the end of this report we decide on which model was the best for the (topic).
+
+
 
 The packages used in this report are:
 
@@ -43,7 +77,9 @@ library(gbm)
 ```
 
 
-Reading in the data
+# Data Processing
+
+Below we read in the data, add new variables, remove old ones, filter specifically for (topic), and then we go ahead and split the data into the test and train datasets for model training and testing. 
 
 
 ```{r}
@@ -81,15 +117,6 @@ data <- data %>%
 data$day <- as.factor(data$day)
 data$topic <- as.factor(data$topic)
 
-#check structure to make sure is successful 
-str(data)
-
-#double check for "errors"
-table(data$day)
-table(data$topic)
-
-# these actually don't have a topic!
-err <- data %>% filter(topic == "other")
 
 # Filter data for specific topic, and then remove topic and url from dataset.
 filtered_data <- data %>%
@@ -195,7 +222,6 @@ plot(data$timedelta, data$shares)
 
 We can combine our EDAs into one if you'd like or we can do separate either is fine with me. 
 
-Also I think we are supposed to filter for the specific topic before EDA for automation, so I am going to do that here we can adjust this if I am wrong however.
 ```{r evan eda 1}
 
 # get names of all columns except day because that isn't numeric, and shares as that is the target variable
