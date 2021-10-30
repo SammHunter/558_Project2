@@ -18,7 +18,6 @@ The following space is reserved for the introduction.
 
 
 
-
 The packages used in this report are:
 
 
@@ -43,10 +42,10 @@ library(gbm)
 ```
 
 
-Reading in the data
+### Reading in the data
 
 
-```{r}
+```{r message = FALSE, echo=FALSE}
 # read in raw data
 data <- read_csv("OnlineNewsPopularity.csv")
 
@@ -90,112 +89,63 @@ table(data$topic)
 
 # these actually don't have a topic!
 err <- data %>% filter(topic == "other")
-
-# Filter data for specific topic, and then remove topic and url from dataset.
-filtered_data <- data %>%
-  filter(topic == "world") %>%  # this is where filtering for params will be needed
-  select(-url,-topic)
-
-# setting the seed
-  set.seed(214)
-
-  # splitting it into 70% for training and 30% for testing
-  train <- sample(1:nrow(filtered_data), size = nrow(filtered_data)*0.7)
-  test <- setdiff(1:nrow(filtered_data), train)
-
-  # Actually subsetting
-  train_set <- filtered_data[train,]
-  test_set <- filtered_data[test,]
-
-
-
 ```
 
 
-# EDA - overall exploration
+### Subsetting Data 
 
+```{r}
+filtered_data <- data %>% filter(topic == params[[2]]$topics) %>% select(!topic, -url)
 
-Variables to ignore - url 
+set.seed(214)
 
+# Splitting Data set into a 70% training set and 30% for a testing set 
+train <- sample(1:nrow(filtered_data), size = nrow(filtered_data)*0.7)
+test <- setdiff(1:nrow(filtered_data), train)
 
-I did pull out all the variables from this, but I'm just printing the ones that may present problems when we analyze them
+# Subsetting the data based on our split
+train_set <- filtered_data[train, 1:48]
+test_set  <- filtered_data[test, ]
 
-
-```{r eval = FALSE}
-# creating the new data set that only references the desired topic, and then we obviously don't need the topic as it's own variable anymore (they'll all contain the same value)
-
-topic_selection <- function(subj, ...){
-
-  # condition logic here where we either say if subj = world then do, else, ect
-  subject <- data %>% filter(topic == "world") %>% select(!topic, -url)
-  
-  # split the data into a training and test set 
-  set.seed(214)
-
-  # splitting it into 80% for training and 20% for testing
-  train <- sample(1:nrow(subject), size = nrow(subject)*0.7)
-  test <- setdiff(1:nrow(subject), train)
-
-  # Actually subsetting
-  train_set <- subject[train, 1:48]
-  test_set <- subject[test, ]
-
-  # creating a log data subset as well
-  train_log <-train_set%>% mutate(shares = log(shares))
-      getSummaries(train_set$shares)
-  test_log <-test_set%>% mutate(shares = log(shares))
-  
-  return(list(subject, train_set, test_set, train_log, test_log))
-}
-
-topic_selection(world)
-
-
-# creating a function to return Tukey's five number summary plus the mean
-getSummaries <- function(vector){
-  five_num<-fivenum(vector)
-  mean<-mean(vector)
-  return(list(five_num, mean))
-}
-
-# pulling out the numeric columns into their own data set so we can get Tukey's five number summary plus the mean for each of them
-num_cols <- select_if(world, is.numeric)
-num_summary <- lapply(num_cols, getSummaries)
-
-
-attach(num_summary)
-
-# this is concerning because while I'm sure number of shares decreases relatively quickly as days go by, I am also sure that within two weeks is still prime sharing time for articles. The range of days after publication until when number of shares is captured runs from over to years ago to only 8 days. Sometimes things go viral a couple of months after they are published 
-timedelta
-
-# 2 - 23 
-n_tokens_title
-
-# 0 to 8474, mean = 546.51
-n_tokens_content
-
-# 0 to 843300 range, mean is 3395.38, median 1400
-shares
-
-# empty articles? - I visited a few of the articles and now believe that these are just an error. See 	
-# http://mashable.com/2013/02/05/social-tv-chart-2-5/  and http://mashable.com/2013/02/24/oscars-online/ which
-# clearly have words in their article. Just something suspect and to keep in mind
-empty <- data %>% filter(n_tokens_content == 0)
-sum(empty$global_subjectivity)
-sum(empty$avg_positive_polarity)
-
-detach(num_summary)
-
-
-plot(data$timedelta, data$shares)
+# Log transformation used for one of the linear regression models:
+train_log <- train_set %>% mutate(shares = log(shares))
+test_log <- test_set %>% mutate(shares = log(shares))
 ```
 
 
-# EDA - Evan
 
-We can combine our EDAs into one if you'd like or we can do separate either is fine with me. 
+# EDA - 
 
-Also I think we are supposed to filter for the specific topic before EDA for automation, so I am going to do that here we can adjust this if I am wrong however.
+
+**NOTE: I combined our EDAs. I though it would be nice to go from a general exploration of the data, to the more specific qualities of the data and predictors.-Sam**
+
+
+We can start by looking at the general qualities of the response variable, number of shares, for this data set. It's pretty clear that we have heavily right-skewed data. For example, the boxplot of `r params[[2]]$topics`'s `shares` shows that we can't interpret a majority of the data due to the number of high-value outliers. To better visualize the population, we applied a log transformation to the response variable. We will also use the log-transformed data once more in one of the linear regression models. The log transformation works well with this data because number of shares is always positive and it is heavily right skewed. 
+
+```{r}
+par(mfrow = c(2, 2))
+# I think this boxplot says a lot, plenty of outliers that just dwarf the
+# majority of the shares
+  ggplot(data = train_set, aes(shares)) +
+  geom_boxplot()
+
+# transform the shares variable by log
+# makes a huge difference in readability of these graphs
+ggplot(data = train_log, aes(shares)) +
+  geom_boxplot()
+
+ggplot(data = train_log, aes(shares)) +
+  geom_histogram(aes(fill = day)) + 
+  facet_wrap(vars(day))
+
+ggplot(data = train_log, aes(timedelta, shares)) +
+  geom_point(aes(color = day))
+
+```
+The boxplot in the top left is a boxplot of the number of shares, and the boxplot on the right represents the distribution of log(shares). Even with the log transformations, we can still see some right skew-ness in number of shares. I have also included a histogram  of number of log(shares) faceted by the day the article was published and a scatter plot of number of log(shares) by how long ago they were published. What we must remember when we look at these graphs is how the natural log affects data. 
+
+
+
 ```{r evan eda 1}
 
 # get names of all columns except day because that isn't numeric, and shares as that is the target variable
@@ -357,31 +307,7 @@ print(chi_tst)
 `r paste0("The Chi-Squared test resulted in a P-Value of ", chi_tst$p.value,". Using a signifigance level of 0.05 it appears that the day of the week that an article is published ", if_else(chi_tst$p.value > 0.05, "does not", "does"), " have a statistically significant impact on the amount of times an article is shared.") `
 
 
-# Preprocessing the Data for Manipulation
 
-
-```{r}
-  # I think this boxplot says a lot, plenty of outliers that just dwarf the
-  # majority of the shares
-  ggplot(data = train_set, aes(shares)) +
-  geom_boxplot()
-
-# transform the shares variable by log
-# makes a huge difference in readability of these graphs
-ggplot(data = train_log, aes(shares)) +
-  geom_boxplot()
-
-ggplot(data = train_log, aes(shares)) +
-  geom_histogram(aes(fill = day)) + 
-  facet_wrap(vars(day))
-
-ggplot(data = train_log, aes(shares, timedelta)) +
-  geom_point(aes(color = day))
-
-```
-
-
-We included some graphs about data where we have changed the response by applying the natural log function to the response. By transforming the response this way, we can actually see what sort of patterns appear in the response variables. As you can see, without the log transformation, we can't even see anything but outliers in the box plot, but once we apply the log transformation, we actually get a box plot, admittedly also with a lot of outliers. 
 
 
 # Model Analysis
