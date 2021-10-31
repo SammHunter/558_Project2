@@ -57,7 +57,7 @@ At the end of this report we decide on which model was the best for the `r param
 The packages used in this report are:
 
 
-```{r}
+```{r message=FALSE, results='hide'}
 library(tidyverse)
 library(caret)
 library(rmarkdown)
@@ -441,9 +441,9 @@ lm_9_fit <- train(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_i
                 method = "lm")
 
 
-lm_9_pred <- predict(lm_9_fit,newdata = test_transformed)
+lm_9_pred <- predict(lm_9_fit,newdata = test_set)
 
-lm_9_rmse <- sqrt(mean((lm_full_pred-test_transformed$shares)^2))
+lm_9_rmse <- sqrt(mean((lm_full_pred-test_set$shares)^2))
 ```
 
 
@@ -460,10 +460,10 @@ lm2_fit <- train(shares ~ LDA_02 + LDA_03 + num_imgs*n_tokens_content  + average
               method = "lm")
 
 # Use model to predict
-lm2_pred <- predict(lm2_fit,newdata = test_transformed)
+lm2_pred <- predict(lm2_fit,newdata = test_set)
 
 # check RMSE of prediction
-lm2_rmse <- sqrt(mean((lm2_pred-test_transformed$shares)^2))
+lm2_rmse <- sqrt(mean((lm2_pred-test_set$shares)^2))
 
 ```
 
@@ -477,7 +477,7 @@ Random forests is an ensemble learning method that works by averaging across man
 Setting up parallel processing to reduce the time it takes to run random forests. 
 
 
-```{r cache = TRUE}
+```{r}
 ### Parallel Processing on 6 cores
 cl <- makePSOCKcluster(6)
 registerDoParallel(cl)
@@ -526,7 +526,7 @@ A boosted tree is another type of ensemble based supervised learning method. Muc
 Below we create two boosted tree models, the first is a model with every predictor variable included, the second is with some selected variables to try and improve on the model with all predictors. For both models we used 10 fold cross validation, number of trees ranging from 100 to 500, an iteration depth from 1 to 10, shrinkage of 0.1, and min obs in node of 10.
 
 
-```{r cache = TRUE, results='hide'}
+```{r results='hide'}
 # Define all tuning parameters
 n.trees <- c(100,200,300,400,500)
 interaction.depth <- c(1:10)
@@ -609,7 +609,7 @@ Before we can determine the best model, we have to compare them.To do so, we est
 
 # Names of models
 model_names <- c("Full Linear Model","Selected Linear Model 1","Selected Linear Model 2",
-                 "Random Forest Model", "Full Boosted Tree Model", "Selected Boosted Tree Model", ) 
+                 "Random Forest Model", "Full Boosted Tree Model", "Selected Boosted Tree Model") 
 
 # RMSE values
 model_rmses <- c(lm_full_rmse, lm_9_rmse, lm2_rmse, rf_MSE, boost_tree_full_rmse,

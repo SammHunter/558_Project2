@@ -16,7 +16,7 @@ reports <- tibble(output_file, params)
 
 apply(reports, MARGIN = 1, 
       FUN = function(x) {
-        render(input = "C:/Users/jolop/OneDrive/Desktop/Fall21/ST558/558_Project2/report_generator.Rmd",
+        render(input = "report_generator.Rmd",
                output_file = x[[1]],
 
                params = x[[2]])
