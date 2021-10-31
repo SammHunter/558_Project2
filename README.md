@@ -1,9 +1,3 @@
----
-title: "Project 2"
-author: "Samantha Hunter & Evan Patton"
-date: "10/31/2021"
-output: html_document
----
 
 
 This document will be filled in further later with a description of the projects, and provide links to the needed files (output for each report/ report generator/ render code/ and maybe more).
