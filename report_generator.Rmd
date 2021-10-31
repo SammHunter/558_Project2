@@ -1,11 +1,13 @@
 ---
-title: "EDA"
-author: "Samantha Hunter"
+title: "Article Share Prediction"
+author: "Samantha Hunter & Evan Patton"
 date: "10/17/2021"
 output: html_document
+params: 
+  topics: params$topics
 ---
 
-# ``
+# `r toupper(params$topics)`
 
 
 ```{r setup, include=FALSE}
@@ -16,14 +18,9 @@ knitr::opts_chunk$set(eval = TRUE, echo = TRUE, message = FALSE, warning = FALSE
 # Introduction
 
 
-The following space is reserved for the introduction. 
-(sam - I think we should include info about how there is just bad data - articles that are indicated they should be empty, but aren't. The timedelta variable shows that we took the number of shares from articles published years ago up to two weeks before end) - this info is the only reason I haven't deleted the EDA on the entire data set yet. 
+This is a report about which model to use when trying to predict the number of social media shares of an article with a topic of `r params$topics` based on a myriad of predictors.
 
-
-
-This is a report about which model to use when trying to predict the number of social media shares of an article with a topic of, `r params[[2]]$topics`, based on a myriad of predictors.
-
-The data to build this report originally comes from [Mashable](mashable.com), and includes a variety of data about articles on their site during a two year period. Some of the data in this dataset are things like, the topic of the article, how long the article is, what day of the week the article was published on, how long ago it was published and a variety of other things.
+The data to build this report originally comes from [Mashable](mashable.com), and includes a variety of data about articles on their site during a two year period. Within this dataset, we have 50 predictors. Three of these predictors are character variables - url of the article (url), the day the article was published (day), and the topic of the article (topic). We won't include url as a predictor since that seems to be more of an identifier variables rather than an attribute of the article. We also are analyzing each of the topics separately from each other. The rest of the predictors are numeric and include attributes such as how long the article is, the polarity of the article, and how long ago it was published as well as a variety of other things.
 
 
 To read more about all of the data included in the dataset read [here](https://archive.ics.uci.edu/ml/datasets/Online+News+Popularity). 
@@ -48,12 +45,13 @@ In this report we create the following models:
 
 * 1 Linear Model with all predictor variables.  
 * 2 Linear Models with some selected predictor variables.  
-* 1 Logistic Linear Model with all predictor varaibles.  
+* 1 Logistic Linear Model with all predictor variables.
+* 1 Random Forest Model with some selected predictor variables. 
 * 1 Boosted Tree Model with all predictor variables.  
 * 1 Boosted Tree Model with some selected predictor variables.  
-* 1 Random Forest Model with some selected predictor variables.
 
-At the end of this report we decide on which model was the best for the `r params[[2]]$topics`.
+
+At the end of this report we decide on which model was the best for the `r params$topics` using root mean square error (RMSE). The RMSE is not the only possible measure of how good a model is, but it is a pretty good choice if we want to measure how good our model is at predicting the number of shares. The RMSE is found by finding the root of the sum of the squared Euclidean distance between the predicted value of shares given some values of the predictors and the actual value of shares given those values. 
 
 
 The packages used in this report are:
@@ -80,15 +78,16 @@ library(gbm)
 ```
 
 
-
 ### Reading in the data
 
-# Data Processing
 
-Below we read in the data, add new variables, remove old ones, filter specifically for the `r params[[2]]$topics` topic, and then we go ahead and split the data into the test and train data sets for model training and testing. 
+##### Data Processing
 
 
-```{r message = FALSE, echo=FALSE}
+Below we read in the data, add new variables, remove old ones, filter specifically for the `r params$topics` topic, and then we go ahead and split the data into the test and train data sets for model training and testing. 
+
+
+```{r message = FALSE, results='hide'}
 # read in raw data
 data <- read_csv("OnlineNewsPopularity.csv")
 
@@ -129,17 +128,22 @@ str(data)
 
 #double check for "errors"
 table(data$day)
-table(data$topic)
 
 # these actually don't have a topic!
-err <- data %>% filter(topic == "other")
+data %>% filter(topic == "other")
 ```
 
 
 ### Subsetting Data 
 
+
+Here we are subsetting the data by selecting for those observations that have `r params$topics` as their topic. 
+
+
 ```{r}
-filtered_data <- data %>% filter(topic == params$topics) %>% select(!topic, -url)
+filtered_data <- data %>% filter(topic == params$topics) %>% select(!topic, -url) %>%
+  mutate(days = factor(days, levels = c("sunday", "monday", "tuesday", "wednesday", 
+                                        "thursday", "friday", "saturday")))
 
 set.seed(214)
 
@@ -157,46 +161,45 @@ test_log <- test_set %>% mutate(shares = log(shares))
 ```
 
 
-
 # Exploratory Data Analysis
 
 
-**NOTE: I combined our EDAs. I though it would be nice to go from a general exploration of the data, to the more specific qualities of the data and predictors.-Sam**
-
-
-<<<<<<< HEAD
 We can start by looking at the general qualities of the response variable, number of shares, for this data set. It's pretty clear that we have heavily right-skewed data. For example, the boxplot of `r params$topics`'s `shares` shows that we can't interpret a majority of the data due to the number of high-value outliers. To better visualize the population, we applied a log transformation to the response variable. We will also use the log-transformed data once more in one of the linear regression models. The log transformation works well with this data because number of shares is always positive and it is heavily right skewed. 
-=======
-We can start by looking at the general qualities of the response variable, number of shares, for this data set. It's pretty clear that we have heavily right-skewed data. For example, the boxplot of `r params[[2]]$topics`'s `shares` shows that we can't interpret a majority of the data due to the number of high-value outliers. To better visualize the population, we applied a log transformation to the response variable. We will also use the log-transformed data once more in one of the linear regression models. The log transformation works well with this data because number of shares is always positive and it is heavily right skewed. 
+
+
+We can start by looking at the general qualities of the response variable, number of shares, for this data set. It's pretty clear that we have heavily right-skewed data. For example, the boxplot of `r params$topics`'s `shares` shows that we can't interpret a majority of the data due to the number of high-value outliers. To better visualize the population, we applied a log transformation to the response variable. We will also use the log-transformed data once more in one of the linear regression models. The log transformation works well with this data because number of shares is always positive and it is heavily right skewed. 
 
 
 ```{r}
-par(mfrow = c(2, 2))
 # I think this boxplot says a lot, plenty of outliers that just dwarf the
 # majority of the shares
   ggplot(data = train_set, aes(shares)) +
-  geom_boxplot()
+  geom_boxplot() +
+  labs(x = "Number of Shares", title = "Boxplot of Shares")
 
 # transform the shares variable by log
 # makes a huge difference in readability of these graphs
 ggplot(data = train_log, aes(shares)) +
-  geom_boxplot()
+  geom_boxplot() +
+  labs(x = "Number of ln(Shares)", title = "Boxplot of ln(Shares)")
 
-ggplot(data = train_log, aes(shares)) +
-  geom_histogram(aes(fill = day)) + 
-  facet_wrap(vars(day))
+
 
 ggplot(data = train_log, aes(timedelta, shares)) +
-  geom_point(aes(color = day))
-
+  geom_point(aes(color = day)) +
+  labs(x = "Days since Article was Published", x = "Number of ln(Shares)",
+       title = "Time Since Article Published vs Number of Shares")
 ```
 
 
-The boxplot in the top left is a boxplot of the number of shares, and the boxplot on the right represents the distribution of log(shares). Even with the log transformations, we can still see some right skew-ness in number of shares. I have also included a histogram  of number of log(shares) faceted by the day the article was published and a scatter plot of number of log(shares) by how long ago they were published. What we must remember when we look at these graphs is how the natural log affects data. 
+The boxplot in the top left is a boxplot of the number of shares, and the boxplot on the right represents the distribution of log(shares). Even with the log transformations, we can still see some right skew-ness in number of shares. I have also included a histogram  of number of log(shares) faceted by the day the article was published and a scatter plot of number of log(shares) by how long ago they were published. What we must remember when we look at these graphs is how the natural log affects data. For example $ln(2) \approx 0.69$, $ln(20) \approx 3.00$,  and $ln(2) \approx 5.29$. The natural log increases by a smaller amount as the input increases.
 
 
+There is also a scatter plot showing the the number of shares on the y-axis and the time in days between when the article was published and when the data was collected. I did expect to see a stronger negative correlation, but that doesn't seem to be the case. We can see a cluster of points between 550 and 600 days, that all have a very small number of shares. There are also plenty of highly shared articles pretty evenly horizontally across time. That seems to indicate that there are just always highly viral articles being shared.
 
-Here we take a look at the correlation of all variables for the `r params[[2]]$topics` topic with `shares`.
+
+Next, we will take a look at the correlation of all variables for the `r params$topics` topic with `shares`. We want to know what predictors are most correlated with our response, shares. 
+
 
 ```{r evan eda 1}
 
@@ -241,17 +244,19 @@ kable(correlation_tibble)
 
 ```
 
+
 From checking the correlation of all variables it appears that the following five variables have the highest correlation with shares are:  
 
-1. `r as.character(correlation_tibble[1,1])`  
-1. `r as.character(correlation_tibble[2,1])`  
-1. `r as.character(correlation_tibble[3,1])`  
-1. `r as.character(correlation_tibble[4,1])`  
-1. `r as.character(correlation_tibble[5,1])`
 
-Lets build some scatter plots to visualize this better!
+#1. `r as.character(correlation_tibble[1,1])`  
+#1. `r as.character(correlation_tibble[2,1])`  
+#1. `r as.character(correlation_tibble[3,1])`  
+#1. `r as.character(correlation_tibble[4,1])`  
+#1. `r as.character(correlation_tibble[5,1])`
 
-First I want to build a function to make plotting easier.
+
+Lets build some scatter plots to visualize this better! We'll want to build a function to make plotting easier.
+
 
 ```{r evan plot_func}
 
@@ -286,15 +291,16 @@ return(scat)
 ```
 
 
-Now that I have built the function lets check out these plots!
+Now that we have built the function lets check out these plots!
+
 
 ```{r evan cor plot 1}
 # Build a plot with the highest absolute value correlation
 plot_func(1)
 ```
 
-`r paste0("Looking at this plot between the number of shares of an article and ", as.character(correlation_tibble[1,1])," we can see that as ",as.character(correlation_tibble[1,1]), " goes up, the number of times an article is shared generally ", if_else(correlation_tibble[1,2] > 0,"increases","descreases"),".")`
 
+`r paste0("Looking at this plot between the number of shares of an article and ", as.character(correlation_tibble[1,1])," we can see that as ",as.character(correlation_tibble[1,1]), " goes up, the number of times an article is shared generally ", if_else(correlation_tibble[1,2] > 0,"increases","descreases"),".")`
 
 
 ```{r evan cor plot 2}
@@ -302,19 +308,24 @@ plot_func(1)
 plot_func(2)
 ```
 
+
 `r paste0("Looking at this plot between the number of shares of an article and ", as.character(correlation_tibble[2,1])," we can see that as ",as.character(correlation_tibble[2,1]), " goes up, the number of times an article is shared generally ", if_else(correlation_tibble[2,2] > 0,"increases","descreases"),".")`
+
 
 ```{r evan cor plot 3}
 # Build a plot with the 3rd highest absolute value correlation
 plot_func(3)
 ```
 
+
 `r paste0("Looking at this plot between the number of shares of an article and ", as.character(correlation_tibble[3,1])," we can see that as ",as.character(correlation_tibble[3,1]), " goes up, the number of times an article is shared generally ", if_else(correlation_tibble[3,2] > 0,"increases","descreases"),".")`
+
 
 ```{r evan cor plot 4}
 # Build a plot with the 4th highest absolute value correlation
 plot_func(4)
 ```
+
 
 `r paste0("Looking at this plot between the number of shares of an article and ", as.character(correlation_tibble[4,1])," we can see that as ",as.character(correlation_tibble[4,1]), " goes up, the number of times an article is shared generally ", if_else(correlation_tibble[4,2] > 0,"increases","descreases"),".")`
 
@@ -324,13 +335,23 @@ plot_func(4)
 plot_func(5)
 ```
 
+
 `r paste0("Looking at this plot between the number of shares of an article and ", as.character(correlation_tibble[5,1])," we can see that as ",as.character(correlation_tibble[5,1]), " goes up, the number of times an article is shared generally ", if_else(correlation_tibble[5,2] > 0,"increases","descreases"),".")`
 
 
-Now that I have looked at the numeric variables, I want to check out the day variable to see if the day of the week has any effect on the number of times an article was shared. To do this I am going to preform a Chi-Squared test! Before I can preform that test however, I am going to create a categorical version of the shares variable called shares_quart that assigns the number of shares to its quartile value. I.E if an articles shares fall into the first quartile it will be assigned "Q1" etc.
+Now that we have looked at the numeric variables, we want to check out the day variable to see if the day of the week has any effect on the number of times an article was shared. To do this we preformed a Chi-Squared test! However, before we can preform that test however, we are going to create a categorical version of the shares variable called shares_quart that assigns the number of shares to its quartile value, i.e. if an articles shares fall into the first quartile it will be assigned "Q1" etc.
 
-Then I build a contingency table between what day of the week an article was published and what quartile it ends up in. Finally I preform the Chi-Sqaured test.
+
+Then we build a contingency table between what day of the week an article was published and what quartile it ends up in. Finally, we preform the Chi-Squared test. We've also included a histogram of the number of ln(shares) facetted by which day of the week it was. To be very clear though, the chi-square test is calculated with shares.
+
+
 ```{r evan quartiles}
+
+ggplot(data = train_log, aes(shares)) +
+  geom_histogram(aes(fill = day)) + 
+  facet_wrap(vars(day)) +
+  labs(x = "Number of ln(Shares)", title = "Histogram of ln(Shares)", 
+       fill = "Day")
 
 # Keep just the day and number of shares
 data_for_chi <- filtered_data %>%
@@ -356,6 +377,7 @@ chi_tst <- chisq.test(x = data_for_chi$day, y = data_for_chi$shares_quart)
 print(chi_tst)
 ```
 
+
 `r paste0("The Chi-Squared test resulted in a P-Value of ", chi_tst$p.value,". Using a signifigance level of 0.05 it appears that the day of the week that an article is published ", if_else(chi_tst$p.value > 0.05, "does not", "does"), " have a statistically significant impact on the amount of times an article is shared.") `
 
 
@@ -366,8 +388,6 @@ print(chi_tst)
 
 
 Linear regression is a simple supervised learning method for quantitative response variables. These models are well-liked because they are easy to interpret. The linear model assumes that the true relationship between the response and predictors is linear, although we can perform non-linear transformations on the model's predictors. For example, we can include higher power predictors, such as quadratics, we can include interaction terms, and we can take logarithmic transformations on the predictors. The 'fit' of a linear model is done by minimizing the sum of the squared residuals, which the model . We hope to use this linear model to predict the number of shares an article can achieve based on some predictors. 
-
-Within this dataset, we have 50 predictors. Three of these predictors are character variables - url of the article (url), the day the article was published (day), and the topic of the article (topic). We won't include url as a predictor since that seems to be more of an identifier variables rather than an attribute of the article. We also are analyzing the topics separately from each other so we won't include that in our linear model either. The rest of the predictors are numeric.
 
 
 ```{r}
@@ -388,12 +408,6 @@ Adj_R_lm<-summary(lm_full_fit)[["r.squared"]]
 ```
 
 
-When we look at the residual plots from the linear regression we do have a goal in mind. For the residual plot (top left), we want to see **no** trends. The normal QQ plot should have points that generally follow the prescribed line on the plot. Many QQ plots do have points that stray at the beginning of the QQ Plots line. In the scale-location plots, the residuals should be evenly spread. Finally, our Cook's plot should have all of its points within Cook's distance. 
-
-
-The plots from our linear model did seem that a logistic regression would improve them. The linear regression from log(shares) is below and we can see some improvement visually and a major improvement of $Adjusted R^2$. The $Adjusted R^2$ from the shares linear regression model is `r Adj_R_lm`, and the $Adjusted R^2$ from the shares linear regression model is `r Adj_R_log`. 
-
-
 ```{r}
 # best model found
 lm_log_fit <- lm(shares~., data = train_log)
@@ -405,13 +419,19 @@ lm_log_rmse <- sqrt(mean((lm_log_pred-test_log$shares)^2))
 ```
 
 
+When we look at the residual plots from the linear regression we do have a goal in mind. For the residual plot (top left), we want to see **no** trends. The normal QQ plot should have points that generally follow the prescribed line on the plot. Many QQ plots do have points that stray at the beginning of the QQ Plots line. In the scale-location plots, the residuals should be evenly spread. Finally, our Cook's plot should have all of its points within Cook's distance. 
+
+
+The plots from our linear model did seem that a logistic regression would improve them. The linear regression from log(shares) is below and we can see some improvement visually and a major improvement of $Adjusted R^2$. The $Adjusted R^2$ from the shares linear regression model is `r Adj_R_lm`, and the $Adjusted R^2$ from the shares linear regression model is `r Adj_R_log`. 
+
+
 Because we eventually want to compare how each of the models that were trained on the training data set performs on the data set, we need to preserve the same scale. We will be going through several more models and comparing the Root Mean Square Error (RMSE), which is found using Euclidean distance. We will not use the log(shares) response in any of the rest of the models produced but the rest of the models created used center and scaled data. We also found two more linear regression models to compare to the model with all the predictors, `lm_full_fit`.  `lm_full_fit`'s RMSE is `r lm_full_rmse``. 
 
 
 The next linear model regression we created uses only the significant predictors from the full linear model. It includes nine predictors. I'm not too concerned about what the predictors stand for because we are not concerned about the interpretability of the model. We only care about prediction. We also use these same predictors in the random forest model. This model will be called "Selected Linear Model 1".
 
 ```{r}
-lm_9_fit <- lm(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs +
+lm_9_fit <- train(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs +
                 average_token_length + kw_min_avg + kw_max_avg +
                 kw_avg_avg + max_negative_polarity,
                 data = train_set,
@@ -423,12 +443,9 @@ lm_9_rmse <- sqrt(mean((lm_full_pred-test_set$shares)^2))
 ```
 
 
-
-
 For this next linear model, we started with the five of the highest correlation variables, and then added a few more that seemed to increase the models effectiveness. Including some interactions between them. This model will be called "Selected Linear Model 2".
 
 ```{r evan lm}
-
 # Fit model
 lm2_fit <- train(shares ~ LDA_02 + LDA_03 + num_imgs*n_tokens_content  + average_token_length+
                    I(average_token_length^2) + kw_avg_avg + rate_negative_words*rate_positive_words 
@@ -450,43 +467,18 @@ lm2_rmse <- sqrt(mean((lm2_pred-test_set$shares)^2))
 ### Random Forests
 
 
-Random forests is an ensemble learning method that works by averaging across many trees. Random forests select a set of *m* predictors, which typically will be $sqrt{p}$ or $p/3$, where $p$ is the number of predictors that we have. Random forests are generally less correlated to each other than some other methods, and this helps reduce variance. In the plot printed below, we want to find the number of predictors that minimizes the root mean square error. The resulting model chosen is from trees created using 5-fold cross validation and are created with a range of values that $m$ can take on. Called mtry in the R program, I chose a range of predictors that may minimize RMSE. Some of the number of predictors were chosen on general best practices. $sqrt{49} = 7$ so I chose to include that as the number of predictors. $49/3 \approx 17$. Finally, I included the low numbers of 1 and 3 as values for $m$ just for the variety. The  previous runs that selected 1 as the best, and the suggested 
+Random forests is an ensemble learning method that works by averaging across many trees. Random forests select a set of *m* predictors, which typically will be $\sqrt{p}$ or $p/3$, where $p$ is the number of predictors that we have. Random forests are generally less correlated to each other than some other methods, and this helps reduce variance. In the plot printed below, we want to find the number of predictors that minimizes the root mean square error. The resulting model chosen is from trees created using 5-fold cross validation and are created with a range of values that $m$ can take on. Called mtry in the R program, I chose a range of predictors that may minimize RMSE. Some of the number of predictors were chosen on general best practices. $\sqrt{49} = 7$ so I chose to include that as the number of predictors. $49/3 \approx 17$. Finally, I included the low numbers of 1 and 3 as values for $m$ just for the variety. The  previous runs that selected 1 as the best, and the suggested 
 
 
 Setting up parallel processing to reduce the time it takes to run random forests. 
 
-```{r, cache = TRUE, eval = FALSE}
-# Holding pattern, I'm thinking I can automate this process to choose the best random forest to then attempt cross validation on - this may go away though. 
-# I ran these models first because the cross-validation takes forever
-rfFit <- randomForest(shares~., data = train_set, mtry = ncol(train_set)/3, 
-                      ntree = 200, importance = TRUE)
-rfPred <- predict(rfFit, newdata = dplyr::select(train_set, -shares))
-# MSE 2618.834
-sqrt(mean((rfPred-train_set$shares)^2))
 
-
-ranfor_sig <- randomForest(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs
-             + average_token_length + kw_min_avg + kw_max_avg + kw_avg_avg + max_negative_polarity,
-             data = train_set, mtry =  ncol(train_set)/3, ntree = 200, importance = TRUE)
-ranfor_Pred <- predict(ranfor_sig, newdata = dplyr::select(train_set, -shares))
-# 2686.744
-sqrt(mean((ranfor_Pred-train_set$shares)^2))
-
-
-ranfor_sig_sub <- randomForest(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs
-             + average_token_length + kw_avg_avg + max_negative_polarity,
-             data = train_set, mtry =  ncol(train_set)/3, ntree = 200, importance = TRUE)
-ranfor_Pred_sub <- predict(ranfor_sig_sub, newdata = dplyr::select(train_set, -shares))
-# 2618.21, pretty small comparatively so this is what I'm going to use for the cross-validation training
-sqrt(mean((ranfor_Pred_sub-train_set$shares)^2))
-
-
-### I have 8 cores, but this is from lecture - sam
+```{r cache = TRUE}
+### Parallel Processing on 6 cores
 cl <- makePSOCKcluster(6)
 registerDoParallel(cl)
 
 ## All subsequent models are then run in parallel
-
 
 # these mtry's were chosen based on previous runs that selected 1 as the best, and the suggested 
 # sqrt(p) -7 and 8, depending on how we count non-numeric vars and p/3 - mtry = 16, 17, and 18, 
@@ -502,23 +494,7 @@ plot(rf_SigPred)
 # Smallest model for this one is mtry = 1
 rf_SigPred_Pred <- predict(rf_SigPred, newdata = dplyr::select(train_set, -shares))
 rf_MSE <- sqrt(mean((rf_SigPred_Pred-train_set$shares)^2))
-# RMSE 3629.05
 rf_MSE
-
-
-
-#rf_AllPred <- train(shares ~ .,
-#             data = train_set, method = "rf", 
-#              trControl = trainControl
-#               (method = "cv", number = 5), 
-#              preProcess = c("center", "scale"), 
-#              tuneGrid = data.frame(mtry = c(1, 2, 3)))
-#rf_AllPred
-#rf_All_Pred <- predict(rf_AllPred, newdata = dplyr::select(train_set, -shares))
-#rf_MSE <- sqrt(mean((rf_All_Pred-train_set$shares)^2))
-# RMSE 3629.05
-#rf_MSE
-#plot(rf_AllPred)
 
 
 ## When you are done:
@@ -537,9 +513,10 @@ stopCluster(cl)
 A boosted tree is another type of ensemble based supervised learning method. Much like with random forests, this model creates a bunch of different trees and then averages the predictions. The difference comes in with the way trees are grown, in this boosted tree model the next tree grown is a result of the last tree. This results in the model learning as it goes. The boosted tree continually tries to improve on the previous model created, so in the end the final or "best" model is a modified version of the originally created model.
 
 
-Below I create two boosted tree models, the first is a model with every predictor variable included, the second is with some selected variables to try and improve on the model with all predictors. For both models I used 10 fold cross validation, number of trees ranging from 100 to 500, an interation depth from 1 to 10, shrinkage of 0.1, and min obs in node of 10.
+Below we create two boosted tree models, the first is a model with every predictor variable included, the second is with some selected variables to try and improve on the model with all predictors. For both models we used 10 fold cross validation, number of trees ranging from 100 to 500, an iteration depth from 1 to 10, shrinkage of 0.1, and min obs in node of 10.
 
-```{r boosted tree evan}
+
+```{r cache = TRUE}
 
 
 # Define all tuning parameters
@@ -556,6 +533,11 @@ tune_df <- expand.grid(n.trees,interaction.depth,shrinkage,n.minobsinnode)
 
 # Give the tuning parameters the right names
 names(tune_df) <- c("n.trees","interaction.depth","shrinkage","n.minobsinnode")
+
+
+### Parallel Processing on 6 cores
+cl <- makePSOCKcluster(6)
+registerDoParallel(cl)
 
 # Build full model
 
@@ -589,19 +571,20 @@ boost_tree_pred <- predict(boost_tree_fit,test_set)
 # Check RMSE for full model
 boost_tree_rmse <- sqrt(mean((boost_tree_pred - test_set$shares)^2))
 
-
+## When you are done:
+stopCluster(cl)
 ```
-
-
 
 
 ### Best Model
 
 
-To determine the best model to use for predicting the amount of shares of an article about (will insert params$topic here) we have decided to measure them against each other using the Root Mean Square Error (RMSE). To read about RMSE I suggest [this link](https://www.statisticshowto.com/probability-and-statistics/regression-analysis/rmse-root-mean-square-error/) as it provides a general explanation of what it is and also has a video!
+To determine the best model to use for predicting the amount of shares of an article about `r params$topic` we have decided to measure them against each other using the Root Mean Square Error (RMSE). To read about RMSE we suggest [this link](https://www.statisticshowto.com/probability-and-statistics/regression-analysis/rmse-root-mean-square-error/) as it provides a general explanation of what it is and also has a video!
 
 
-Before we can determine the best model we have to compare them. So that is what we do here, first we establish the name of each model, and then we add the name and their corresponding RMSEs to a tibble for comparison!
+Before we can determine the best model, we have to compare them.To do so, we first establish the name of each model, and then add the name and their corresponding RMSEs to a tibble for comparison!
+
+
 ```{r model selection}
 
 # Names of models
@@ -616,38 +599,15 @@ model_rmses <- c(lm_full_rmse,lm2_rmse,boost_tree_full_rmse,
 model_comp <- tibble(model_names,model_rmses)
 
 #Arrange by RMSE value in ascending order
-model_comp <- model_comp %>%
-  arrange(model_rmses)
+model_comp <- model_comp %>% arrange(model_rmses)
 
 # Change names for a good looking print out.
 names(model_comp) <- c("Name of Model","RMSE of Model")
 
 # Print table.
 kable(model_comp)
-
-```
-
-From this table we can see that for the `r params[[2]]$topics` topic the best model is the `r as.character(model_comp[1,1])` with an RMSE value of `r round(model_comp[1,2],digits = 4)`
-
-
-
-## Automation of R Markdown
-```{r eval = FALSE}
-subj_topics<-unique(data$topic)
-output_file <- paste0(subj_topics, ".html")
-
-## First have to build this function
-params <- lapply(subj_topics, FUN = function(x){list(team = x)})
-
-
-rmarkdown::render("README.Rmd",
-                  output_format = "github_document",
-                  output_options = list(
-                    toc = TRUE, 
-                    toc_depth = 6)
-)
-
 ```
 
 
->>>>>>> 9eb3bae6020fd2fdc7f9702be504fceaa2794fd3
+From this table we can see that for the `r params$topics` topic the best model is the `r as.character(model_comp[1,1])` with an RMSE value of `r round(model_comp[1,2],digits = 4)`
+
