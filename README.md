@@ -25,3 +25,16 @@ The following are the links to the projects completed work and outputs:
 
 
 (^those will be links once the documents exist)
+
+
+The packages used to complete this package are:  
+
+* tidyverse  
+* caret  
+* rmarkdown  
+* randomForest  
+* parallel  
+* doParallel  
+* knitr  
+* gbm
+

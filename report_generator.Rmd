@@ -408,7 +408,7 @@ lm_log_rmse <- sqrt(mean((lm_log_pred-test_log$shares)^2))
 Because we eventually want to compare how each of the models that were trained on the training data set performs on the data set, we need to preserve the same scale. We will be going through several more models and comparing the Root Mean Square Error (RMSE), which is found using Euclidean distance. We will not use the log(shares) response in any of the rest of the models produced but the rest of the models created used center and scaled data. We also found two more linear regression models to compare to the model with all the predictors, `lm_full_fit`.  `lm_full_fit`'s RMSE is `r lm_full_rmse``. 
 
 
-The next linear model regression we created uses only the significant predictors from the full linear model. It includes nine predictors. I'm not too concerned about what the predictors stand for because we are not concerned about the interpretability of the model. We only care about prediction. We also use these same predictors in the random forest model. 
+The next linear model regression we created uses only the significant predictors from the full linear model. It includes nine predictors. I'm not too concerned about what the predictors stand for because we are not concerned about the interpretability of the model. We only care about prediction. We also use these same predictors in the random forest model. This model will be called "Selected Linear Model 1".
 
 ```{r}
 lm_9_fit <- lm(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs +
@@ -425,7 +425,7 @@ lm_9_rmse <- sqrt(mean((lm_full_pred-test_set$shares)^2))
 
 
 
-For this next linear model, we started with the five of the highest correlation variables, and then added a few more that seemed to increase the models effectiveness. Including some interactions between them.
+For this next linear model, we started with the five of the highest correlation variables, and then added a few more that seemed to increase the models effectiveness. Including some interactions between them. This model will be called "Selected Linear Model 2".
 
 ```{r evan lm}
 
@@ -605,10 +605,12 @@ Before we can determine the best model we have to compare them. So that is what 
 ```{r model selection}
 
 # Names of models
-model_names <- c("Full Linear Model", "Selected Linear Model","Full Boosted Tree Model", "Selected Boosted Tree Model", "Random Forest Model") # these can be added to, just getting the first try at this down
+model_names <- c("Full Linear Model", "Selected Linear Model 2 ","Full Boosted Tree Model", 
+                 "Selected Boosted Tree Model", "Random Forest Model","Selected Linear Model 1") # these can be added to, just getting the first try at this down
 
 # RMSE values
-model_rmses <- c(lm_full_rmse,lm2_rmse,boost_tree_full_rmse,boost_tree_rmse,rf_MSE)  # these can be added to
+model_rmses <- c(lm_full_rmse,lm2_rmse,boost_tree_full_rmse,
+                 boost_tree_rmse,rf_MSE,lm_9_rmse)  # these can be added to
 
 # Combine into tibble
 model_comp <- tibble(model_names,model_rmses)
