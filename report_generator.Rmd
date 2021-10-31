@@ -527,8 +527,6 @@ Below we create two boosted tree models, the first is a model with every predict
 
 
 ```{r cache = TRUE, results='hide'}
-
-
 # Define all tuning parameters
 n.trees <- c(100,200,300,400,500)
 interaction.depth <- c(1:10)
@@ -610,8 +608,8 @@ Before we can determine the best model, we have to compare them.To do so, we est
 ```{r model selection}
 
 # Names of models
-model_names <- c("Full Linear Model", "Selected Linear Model 2 ","Full Boosted Tree Model", 
-                 "Selected Boosted Tree Model", "Random Forest Model","Selected Linear Model 1") # these can be added to, just getting the first try at this down
+model_names <- c("Full Linear Model","Selected Linear Model 1","Selected Linear Model 2",
+                 "Random Forest Model", "Full Boosted Tree Model", "Selected Boosted Tree Model", ) # these can be added to, just getting the first try at this down
 
 # RMSE values
 model_rmses <- c(lm_full_rmse, lm_9_rmse, lm2_rmse, rf_MSE, boost_tree_full_rmse,

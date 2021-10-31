@@ -1,4 +1,5 @@
-This repo is for Samantha Hunter and Evan Patton to house all information for Project 2 for ST-558. The topic for this project is, to predict the amount of shares on social media that a news article gets.
+This repo is for Samantha Hunter and Evan Patton to house all information for Project 2 for ST-558. The topic for this project is, to predict the amount of shares on social media that a news article gets. We judged the models using root mean square error. 
+
 
 The following are the links to the projects completed work and outputs:  
 
@@ -12,9 +13,6 @@ The following are the links to the projects completed work and outputs:
 * [Report on Tech topic.](https://sammhunter.github.io/558_Project2/tech_report.html)
 
 
-
-
-
 The packages used to complete this project are:  
 
 * tidyverse  
@@ -26,3 +24,19 @@ The packages used to complete this project are:
 * knitr  
 * gbm
 
+
+Render Code:
+
+`subj_topics<-unique(data$topic)`
+
+`output_file <- paste0(subj_topics, "_report")`
+`params <- lapply(subj_topics, FUN = function(x){list(topics = x)})`
+`reports <- tibble(output_file, params)`
+
+`apply(reports, MARGIN = 1,` 
+`      FUN = function(x) {`
+`        render(input = "C:/Users/jolop/OneDrive/Desktop/Fall21/ST558/558_Project2/report_generator.Rmd",`
+`               output_file = x[[1]],`
+
+`               params = x[[2]])`
+`      })`
