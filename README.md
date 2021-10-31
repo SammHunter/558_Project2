@@ -15,7 +15,7 @@ The following are the links to the projects completed work and outputs:
 
 
 
-The packages used to complete this package are:  
+The packages used to complete this project are:  
 
 * tidyverse  
 * caret  
