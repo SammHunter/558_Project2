@@ -392,21 +392,20 @@ Linear regression is a simple supervised learning method for quantitative respon
 
 
 ```{r}
-preProcValues <- preProcess(train_set, method = c("center", "scale"))
-
-train_transformed <- predict(preProcValues, train_set)
-test_transformed <- predict(preProcValues, test_set)
-
 # Build Full Model
-lm_full_fit <- lm(shares ~ . , data = train_transformed)
+lm_full_fit <- train(shares ~ . , data = train_set,
+              preProcess = c("center","scale"),
+              method = "lm")
 
-lm_full_pred <- predict(lm_full_fit,newdata = test_transformed)
+
+lm_full_pred <- predict(lm_full_fit,newdata = test_set)
 # check RMSE of prediction
-lm_full_rmse <- sqrt(mean((lm_full_pred-test_transformed$shares)^2))
-lm_full_rmse
-# residual plots from the full linear regression model
-plot(lm_full_fit)
-Adj_R_lm<-summary(lm_full_fit)[["r.squared"]]
+lm_full_rmse <- sqrt(mean((lm_full_pred-test_set$shares)^2))
+Adj_R_lm <- summary(lm_full_fit)[["r.squared"]]
+
+# creating residual plots from the full linear regression model
+lm_full_plot <- lm(shares ~ . , data = train_set)
+plot(lm_full_plot)
 ```
 
 
@@ -434,10 +433,13 @@ The next linear model regression we created uses some of the significant predict
 
 
 ```{r}
-lm_9_fit <- lm(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs +
+lm_9_fit <- train(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs +
                 average_token_length + kw_min_avg + kw_max_avg +
                 kw_avg_avg + max_negative_polarity,
-                data = train_transformed)
+                data = train_set,
+                preProcess = c("center","scale"),
+                method = "lm")
+
 
 lm_9_pred <- predict(lm_9_fit,newdata = test_transformed)
 
@@ -450,11 +452,12 @@ For this next linear model, we started with the five of the highest correlation 
 
 ```{r evan lm}
 # Fit model
-lm2_fit <- lm(shares ~ LDA_02 + LDA_03 + num_imgs*n_tokens_content  + average_token_length+
+lm2_fit <- train(shares ~ LDA_02 + LDA_03 + num_imgs*n_tokens_content  + average_token_length+
                    I(average_token_length^2) + kw_avg_avg + rate_negative_words*rate_positive_words 
                  + kw_max_avg + day + title_subjectivity ,
-              data = train_transformed)
-
+              data = train_set,
+              preProcess = c("center","scale"),
+              method = "lm")
 
 # Use model to predict
 lm2_pred <- predict(lm2_fit,newdata = test_transformed)
@@ -491,12 +494,14 @@ rf_SigPred <- train(shares ~ n_tokens_title + n_non_stop_words + num_hrefs
              preProcess = c("center", "scale"), 
              tuneGrid = data.frame(mtry = c(1, 3, 7, 16, 17)))
 rf_SigPred
-plot(rf_SigPred)
+
+# Plot representing the 
+plot(rf_SigPred, xlab = "Number of Predictors in RF Model", ylab = "Root Mean Square Error (Found through CV)", 
+     main = "Minimizing RMSE")
+
 # Smallest model for this one is mtry = 1
 rf_SigPred_Pred <- predict(rf_SigPred, newdata = select(train_set, -shares))
 rf_MSE <- sqrt(mean((rf_SigPred_Pred-train_set$shares)^2))
-rf_MSE
-
 
 ## When you are done:
 stopCluster(cl)
@@ -510,6 +515,9 @@ stopCluster(cl)
 ```
 
 
+Above, we also have a plot of the RMSE by the number of randomly selected predictors that we tried. We want to look for the smallest RMSE for the best number of predictors (called mtry within the `train()` function). 
+
+
 ### Boosted Tree
 
 A boosted tree is another type of ensemble based supervised learning method. Much like with random forests, this model creates a bunch of different trees and then averages the predictions. The difference comes in with the way trees are grown, in this boosted tree model the next tree grown is a result of the last tree. This results in the model learning as it goes. The boosted tree continually tries to improve on the previous model created, so in the end the final or "best" model is a modified version of the originally created model.
@@ -518,7 +526,7 @@ A boosted tree is another type of ensemble based supervised learning method. Muc
 Below we create two boosted tree models, the first is a model with every predictor variable included, the second is with some selected variables to try and improve on the model with all predictors. For both models we used 10 fold cross validation, number of trees ranging from 100 to 500, an iteration depth from 1 to 10, shrinkage of 0.1, and min obs in node of 10.
 
 
-```{r cache = TRUE}
+```{r cache = TRUE, results='hide'}
 
 
 # Define all tuning parameters
@@ -577,6 +585,18 @@ boost_tree_rmse <- sqrt(mean((boost_tree_pred - test_set$shares)^2))
 stopCluster(cl)
 ```
 
+```{r}
+plot(boost_tree_full_fit, xlab = "Max Tree Depth (by Interaction)", 
+     ylab = "Root Mean Square Error (Found through CV)", 
+     main = "All Predictors - Minimizing RMSE")
+plot(boost_tree_fit, xlab = "Max Tree Depth (by Interaction)",
+     ylab = "Root Mean Square Error (Found through CV)", 
+     main = "Subsetted Predictors - Minimizing RMSE")
+```
+
+
+Like we did in the random forests, we  have a plot of the RMSE by the number of randomly selected predictors that we tried. We want to look for the smallest RMSE to identify the best tree depth and the best number of iterations to perform. Each different line, represents a different number of trees used in the cross validation. Adding more trees usually reduces the error on the training set, but also may lead to overfitting. 
+
 
 ### Best Model
 
@@ -594,8 +614,8 @@ model_names <- c("Full Linear Model", "Selected Linear Model 2 ","Full Boosted T
                  "Selected Boosted Tree Model", "Random Forest Model","Selected Linear Model 1") # these can be added to, just getting the first try at this down
 
 # RMSE values
-model_rmses <- c(lm_full_rmse,lm2_rmse,boost_tree_full_rmse,
-                 boost_tree_rmse,rf_MSE,lm_9_rmse)  # these can be added to
+model_rmses <- c(lm_full_rmse, lm_9_rmse, lm2_rmse, rf_MSE, boost_tree_full_rmse,
+                 boost_tree_rmse)  # these can be added to
 
 # Combine into tibble
 model_comp <- tibble(model_names,model_rmses)
