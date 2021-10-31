@@ -609,12 +609,11 @@ Before we can determine the best model, we have to compare them.To do so, we est
 
 # Names of models
 model_names <- c("Full Linear Model","Selected Linear Model 1","Selected Linear Model 2",
-                 "Random Forest Model", "Full Boosted Tree Model", "Selected Boosted Tree Model", ) # these can be added to, just getting the first try at this down
+                 "Random Forest Model", "Full Boosted Tree Model", "Selected Boosted Tree Model", ) 
 
 # RMSE values
 model_rmses <- c(lm_full_rmse, lm_9_rmse, lm2_rmse, rf_MSE, boost_tree_full_rmse,
-                 boost_tree_rmse)  # these can be added to
-
+                 boost_tree_rmse)
 # Combine into tibble
 model_comp <- tibble(model_names,model_rmses)
 
