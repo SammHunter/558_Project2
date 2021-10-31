@@ -11,7 +11,7 @@ params:
 
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(eval = TRUE, echo = TRUE, message = FALSE, warning = FALSE, error = TRUE)
+knitr::opts_chunk$set(eval = TRUE, echo = TRUE, message = FALSE, warning = FALSE)
 ```
 
 
@@ -142,7 +142,7 @@ Here we are subsetting the data by selecting for those observations that have `r
 
 ```{r}
 filtered_data <- data %>% filter(topic == params$topics) %>% select(!topic, -url) %>%
-  mutate(days = factor(days, levels = c("sunday", "monday", "tuesday", "wednesday", 
+  mutate(day = factor(day, levels = c("sunday", "monday", "tuesday", "wednesday", 
                                         "thursday", "friday", "saturday")))
 
 set.seed(214)
@@ -182,17 +182,18 @@ We can start by looking at the general qualities of the response variable, numbe
 ggplot(data = train_log, aes(shares)) +
   geom_boxplot() +
   labs(x = "Number of ln(Shares)", title = "Boxplot of ln(Shares)")
-
-
-
-ggplot(data = train_log, aes(timedelta, shares)) +
-  geom_point(aes(color = day)) +
-  labs(x = "Days since Article was Published", x = "Number of ln(Shares)",
-       title = "Time Since Article Published vs Number of Shares")
 ```
 
 
-The boxplot in the top left is a boxplot of the number of shares, and the boxplot on the right represents the distribution of log(shares). Even with the log transformations, we can still see some right skew-ness in number of shares. I have also included a histogram  of number of log(shares) faceted by the day the article was published and a scatter plot of number of log(shares) by how long ago they were published. What we must remember when we look at these graphs is how the natural log affects data. For example $ln(2) \approx 0.69$, $ln(20) \approx 3.00$,  and $ln(2) \approx 5.29$. The natural log increases by a smaller amount as the input increases.
+The boxplot in the top left is a boxplot of the number of shares, and the boxplot on the right represents the distribution of log(shares). Even with the log transformations, we can still see some right skew-ness in number of shares. I have also included a histogram  of number of log(shares) faceted by the day the article was published and a scatter plot of number of log(shares) by how long ago they were published. What we must remember when we look at these graphs is how the natural log affects data. For example $ln(2) \approx 0.69$, $ln(20) \approx 3.00$,  and $ln(200) \approx 5.29$. The natural log increases by a smaller amount as the input increases.
+
+
+```{r}
+ggplot(data = train_log, aes(timedelta, shares)) +
+  geom_point(aes(color = day)) +
+  labs(x = "Days since Article was Published", y = "Number of ln(Shares)",
+       title = "Time Since Article Published vs Number of Shares")
+```
 
 
 There is also a scatter plot showing the the number of shares on the y-axis and the time in days between when the article was published and when the data was collected. I did expect to see a stronger negative correlation, but that doesn't seem to be the case. We can see a cluster of points between 550 and 600 days, that all have a very small number of shares. There are also plenty of highly shared articles pretty evenly horizontally across time. That seems to indicate that there are just always highly viral articles being shared.
@@ -248,11 +249,11 @@ kable(correlation_tibble)
 From checking the correlation of all variables it appears that the following five variables have the highest correlation with shares are:  
 
 
-#1. `r as.character(correlation_tibble[1,1])`  
-#1. `r as.character(correlation_tibble[2,1])`  
-#1. `r as.character(correlation_tibble[3,1])`  
-#1. `r as.character(correlation_tibble[4,1])`  
-#1. `r as.character(correlation_tibble[5,1])`
+1. `r as.character(correlation_tibble[1,1])`  
+2. `r as.character(correlation_tibble[2,1])`  
+3. `r as.character(correlation_tibble[3,1])`  
+4. `r as.character(correlation_tibble[4,1])`  
+5. `r as.character(correlation_tibble[5,1])`
 
 
 Lets build some scatter plots to visualize this better! We'll want to build a function to make plotting easier.
@@ -391,17 +392,18 @@ Linear regression is a simple supervised learning method for quantitative respon
 
 
 ```{r}
+preProcValues <- preProcess(train_set, method = c("center", "scale"))
+
+train_transformed <- predict(preProcValues, train_set)
+test_transformed <- predict(preProcValues, test_set)
+
 # Build Full Model
-lm_full_fit <- train(shares ~ . ,
-              data = train_set,
-              preProcess = c("center","scale"),
-              method = "lm")
+lm_full_fit <- lm(shares ~ . , data = train_transformed)
 
-lm_full_pred <- predict(lm_full_fit,newdata = test_set)
+lm_full_pred <- predict(lm_full_fit,newdata = test_transformed)
 # check RMSE of prediction
-lm_full_rmse <- sqrt(mean((lm_full_pred-test_set$shares)^2))
+lm_full_rmse <- sqrt(mean((lm_full_pred-test_transformed$shares)^2))
 
-par(mfrow = c(2, 2))
 # residual plots from the full linear regression model
 plot(lm_full_fit)
 Adj_R_lm<-summary(lm_full_fit)[["r.squared"]]
@@ -414,7 +416,7 @@ lm_log_fit <- lm(shares~., data = train_log)
 Adj_R_log<-summary(lm_log_fit)[["r.squared"]]
 # still not a great linear model plot, but it is better than before
 plot(lm_log_fit)
-lm_log_pred <- predict(lm_log_pred, test_log)
+lm_log_pred <- predict(lm_log_fit, test_log)
 lm_log_rmse <- sqrt(mean((lm_log_pred-test_log$shares)^2))
 ```
 
@@ -422,44 +424,43 @@ lm_log_rmse <- sqrt(mean((lm_log_pred-test_log$shares)^2))
 When we look at the residual plots from the linear regression we do have a goal in mind. For the residual plot (top left), we want to see **no** trends. The normal QQ plot should have points that generally follow the prescribed line on the plot. Many QQ plots do have points that stray at the beginning of the QQ Plots line. In the scale-location plots, the residuals should be evenly spread. Finally, our Cook's plot should have all of its points within Cook's distance. 
 
 
-The plots from our linear model did seem that a logistic regression would improve them. The linear regression from log(shares) is below and we can see some improvement visually and a major improvement of $Adjusted R^2$. The $Adjusted R^2$ from the shares linear regression model is `r Adj_R_lm`, and the $Adjusted R^2$ from the shares linear regression model is `r Adj_R_log`. 
+The plots from our linear model did seem that a logistic regression would improve them. The linear regression from log(shares) is below and we can see some improvement visually and a major improvement of $Adjusted R^2$. The $Adjusted R^2$ from the shares linear regression model is `r Adj_R_lm`, and the $Adjusted R^2$ from the shares linear regression model is `r Adj_R_log`. Each of these topic models show a much larger $Adjusted R^2$ from the log(Shares) linear regression model.
 
 
 Because we eventually want to compare how each of the models that were trained on the training data set performs on the data set, we need to preserve the same scale. We will be going through several more models and comparing the Root Mean Square Error (RMSE), which is found using Euclidean distance. We will not use the log(shares) response in any of the rest of the models produced but the rest of the models created used center and scaled data. We also found two more linear regression models to compare to the model with all the predictors, `lm_full_fit`.  `lm_full_fit`'s RMSE is `r lm_full_rmse``. 
 
 
-The next linear model regression we created uses only the significant predictors from the full linear model. It includes nine predictors. I'm not too concerned about what the predictors stand for because we are not concerned about the interpretability of the model. We only care about prediction. We also use these same predictors in the random forest model. This model will be called "Selected Linear Model 1".
+The next linear model regression we created uses some of the significant predictors from the full linear model. It includes nine predictors. I'm not too concerned about what the predictors stand for because we are not concerned about the interpretability of the model. We only care about prediction. We also use these same predictors in the random forest model. This model will be called "Selected Linear Model 1".
+
 
 ```{r}
-lm_9_fit <- train(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs +
+lm_9_fit <- lm(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs +
                 average_token_length + kw_min_avg + kw_max_avg +
                 kw_avg_avg + max_negative_polarity,
-                data = train_set,
-                preProcess = c("center","scale"),
-                method = "lm")
-lm_9_pred <- predict(lm_9_fit,newdata = test_set)
+                data = train_transformed)
+
+lm_9_pred <- predict(lm_9_fit,newdata = test_transformed)
 # check RMSE of prediction
-lm_9_rmse <- sqrt(mean((lm_full_pred-test_set$shares)^2))
+lm_9_rmse <- sqrt(mean((lm_full_pred-test_transformed$shares)^2))
 ```
 
 
 For this next linear model, we started with the five of the highest correlation variables, and then added a few more that seemed to increase the models effectiveness. Including some interactions between them. This model will be called "Selected Linear Model 2".
 
+
 ```{r evan lm}
 # Fit model
-lm2_fit <- train(shares ~ LDA_02 + LDA_03 + num_imgs*n_tokens_content  + average_token_length+
+lm2_fit <- lm(shares ~ LDA_02 + LDA_03 + num_imgs*n_tokens_content  + average_token_length+
                    I(average_token_length^2) + kw_avg_avg + rate_negative_words*rate_positive_words 
                  + kw_max_avg + day + title_subjectivity ,
-              data = train_set,
-              preProcess = c("center","scale"),
-              method = "lm")
+              data = train_transformed)
 
 
 # Use model to predict
-lm2_pred <- predict(lm2_fit,newdata = test_set)
+lm2_pred <- predict(lm2_fit,newdata = test_transformed)
 
 # check RMSE of prediction
-lm2_rmse <- sqrt(mean((lm2_pred-test_set$shares)^2))
+lm2_rmse <- sqrt(mean((lm2_pred-test_transformed$shares)^2))
 
 ```
 
@@ -486,7 +487,7 @@ registerDoParallel(cl)
 rf_SigPred <- train(shares ~ n_tokens_title + n_non_stop_words + num_hrefs 
                     + num_imgs + average_token_length + kw_avg_avg + max_negative_polarity,
              data = train_set, method = "rf", 
-             trControl = trainControl(method = "cv", number = 5), 
+             trControl = trainControl(method = "cv", number = 10), 
              preProcess = c("center", "scale"), 
              tuneGrid = data.frame(mtry = c(1, 3, 7, 16, 17)))
 rf_SigPred
@@ -501,6 +502,7 @@ rf_MSE
 stopCluster(cl)
 
 # sometimes you need to run this to get out of the cluster/run without the cluster
+
 #unregister_dopar <- function() {
 #  env <- foreach:::.foreachGlobals
 #  rm(list=ls(name=env), pos=env)
@@ -549,7 +551,7 @@ boost_tree_full_fit <- train(shares ~ . ,
                        tuneGrid = tune_df)
 
 # Predict full model
-boost_tree_pred <- predict(boost_tree_full_fit,test_set)
+boost_tree_full_pred <- predict(boost_tree_full_fit,test_set)
 
 # Check RMSE for full model
 boost_tree_full_rmse <- sqrt(mean((boost_tree_full_pred - test_set$shares)^2))
@@ -582,7 +584,7 @@ stopCluster(cl)
 To determine the best model to use for predicting the amount of shares of an article about `r params$topic` we have decided to measure them against each other using the Root Mean Square Error (RMSE). To read about RMSE we suggest [this link](https://www.statisticshowto.com/probability-and-statistics/regression-analysis/rmse-root-mean-square-error/) as it provides a general explanation of what it is and also has a video!
 
 
-Before we can determine the best model, we have to compare them.To do so, we first establish the name of each model, and then add the name and their corresponding RMSEs to a tibble for comparison!
+Before we can determine the best model, we have to compare them.To do so, we establish the name of each model, and then we add the name and their corresponding RMSEs to a tibble for comparison!
 
 
 ```{r model selection}
