@@ -1,0 +1,27 @@
+---
+title: "Render"
+author: "Samantha Hunter"
+date: "10/30/2021"
+output: html_document
+---
+
+## Automation of R Markdown
+```{r eval = FALSE}
+subj_topics<-unique(data$topic)
+
+output_file <- paste0(subj_topics, "_report")
+output_file[[1]]
+params <- lapply(subj_topics, FUN = function(x){list(topics = x)})
+reports <- tibble(output_file, params)
+
+apply(reports, MARGIN = 1, 
+      FUN = function(x) {
+        render(input = "C:/Users/jolop/OneDrive/Desktop/Fall21/ST558/558_Project2/report_generator.Rmd",
+               output_file = x[[1]],
+
+               params = x[[2]])
+      })
+
+```
+
+

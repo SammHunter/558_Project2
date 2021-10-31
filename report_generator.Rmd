@@ -403,7 +403,7 @@ lm_full_fit <- lm(shares ~ . , data = train_transformed)
 lm_full_pred <- predict(lm_full_fit,newdata = test_transformed)
 # check RMSE of prediction
 lm_full_rmse <- sqrt(mean((lm_full_pred-test_transformed$shares)^2))
-
+lm_full_rmse
 # residual plots from the full linear regression model
 plot(lm_full_fit)
 Adj_R_lm<-summary(lm_full_fit)[["r.squared"]]
@@ -424,7 +424,7 @@ lm_log_rmse <- sqrt(mean((lm_log_pred-test_log$shares)^2))
 When we look at the residual plots from the linear regression we do have a goal in mind. For the residual plot (top left), we want to see **no** trends. The normal QQ plot should have points that generally follow the prescribed line on the plot. Many QQ plots do have points that stray at the beginning of the QQ Plots line. In the scale-location plots, the residuals should be evenly spread. Finally, our Cook's plot should have all of its points within Cook's distance. 
 
 
-The plots from our linear model did seem that a logistic regression would improve them. The linear regression from log(shares) is below and we can see some improvement visually and a major improvement of $Adjusted R^2$. The $Adjusted R^2$ from the shares linear regression model is `r Adj_R_lm`, and the $Adjusted R^2$ from the shares linear regression model is `r Adj_R_log`. Each of these topic models show a much larger $Adjusted R^2$ from the log(Shares) linear regression model.
+The plots from our linear model did seem that a logistic regression would improve them. The linear regression from log(shares) is below and we can see some improvement visually and a major improvement of $Adjusted R^2$. The $Adjusted R^2$ from the shares linear regression model is `r Adj_R_lm`, and the $Adjusted R^2$ from the shares linear regression model is `r Adj_R_log`. Each of these topic models show a larger $Adjusted R^2$ from the log(Shares) linear regression model.
 
 
 Because we eventually want to compare how each of the models that were trained on the training data set performs on the data set, we need to preserve the same scale. We will be going through several more models and comparing the Root Mean Square Error (RMSE), which is found using Euclidean distance. We will not use the log(shares) response in any of the rest of the models produced but the rest of the models created used center and scaled data. We also found two more linear regression models to compare to the model with all the predictors, `lm_full_fit`.  `lm_full_fit`'s RMSE is `r lm_full_rmse``. 
@@ -440,7 +440,7 @@ lm_9_fit <- lm(shares ~ n_tokens_title + n_non_stop_words + num_hrefs + num_imgs
                 data = train_transformed)
 
 lm_9_pred <- predict(lm_9_fit,newdata = test_transformed)
-# check RMSE of prediction
+
 lm_9_rmse <- sqrt(mean((lm_full_pred-test_transformed$shares)^2))
 ```
 
@@ -493,7 +493,7 @@ rf_SigPred <- train(shares ~ n_tokens_title + n_non_stop_words + num_hrefs
 rf_SigPred
 plot(rf_SigPred)
 # Smallest model for this one is mtry = 1
-rf_SigPred_Pred <- predict(rf_SigPred, newdata = dplyr::select(train_set, -shares))
+rf_SigPred_Pred <- predict(rf_SigPred, newdata = select(train_set, -shares))
 rf_MSE <- sqrt(mean((rf_SigPred_Pred-train_set$shares)^2))
 rf_MSE
 
