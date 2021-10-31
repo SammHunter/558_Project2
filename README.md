@@ -3,8 +3,8 @@ This repo is for Samantha Hunter and Evan Patton to house all information for Pr
 
 The following are the links to the projects completed work and outputs:  
 
-* [Main document that was the base for reports.](report_generator.Rmd)  
-* [R Script for rendering reports.](render_automate.Rmd)  
+* [Main document that was the base for reports.](https://github.com/SammHunter/558_Project2/blob/master/report_generator.Rmd)  
+* [R Script for rendering reports.](https://github.com/SammHunter/558_Project2/blob/master/render_automate.Rmd)  
 * [Report on World topic.](https://sammhunter.github.io/558_Project2/world_report.html)  
 * [Report on Lifestyle topic.](https://sammhunter.github.io/558_Project2/lifestyle_report.html)  
 * [Report on Entertainment topic.](https://sammhunter.github.io/558_Project2/entertainment_report.html)  
