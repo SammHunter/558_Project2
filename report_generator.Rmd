@@ -518,7 +518,7 @@ A boosted tree is another type of ensemble based supervised learning method. Muc
 Below we create two boosted tree models, the first is a model with every predictor variable included, the second is with some selected variables to try and improve on the model with all predictors. For both models we used 10 fold cross validation, number of trees ranging from 100 to 500, an iteration depth from 1 to 10, shrinkage of 0.1, and min obs in node of 10.
 
 
-```{r cache = TRUE}
+```{r cache = TRUE, results='hide'}
 
 
 # Define all tuning parameters
