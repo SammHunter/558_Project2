@@ -478,12 +478,6 @@ Setting up parallel processing to reduce the time it takes to run random forests
 
 
 ```{r}
-### Parallel Processing on 6 cores
-cl <- makePSOCKcluster(6)
-registerDoParallel(cl)
-
-## All subsequent models are then run in parallel
-
 # these mtry's were chosen based on previous runs that selected 1 as the best, and the suggested 
 # sqrt(p) -7 and 8, depending on how we count non-numeric vars and p/3 - mtry = 16, 17, and 18, 
 # that are usually some of the best tuning parameters 
@@ -502,16 +496,6 @@ plot(rf_SigPred, xlab = "Number of Predictors in RF Model", ylab = "Root Mean Sq
 # Smallest model for this one is mtry = 1
 rf_SigPred_Pred <- predict(rf_SigPred, newdata = select(train_set, -shares))
 rf_MSE <- sqrt(mean((rf_SigPred_Pred-train_set$shares)^2))
-
-## When you are done:
-stopCluster(cl)
-
-# sometimes you need to run this to get out of the cluster/run without the cluster
-
-#unregister_dopar <- function() {
-#  env <- foreach:::.foreachGlobals
-#  rm(list=ls(name=env), pos=env)
-#}
 ```
 
 
@@ -541,11 +525,6 @@ tune_df <- expand.grid(n.trees,interaction.depth,shrinkage,n.minobsinnode)
 
 # Give the tuning parameters the right names
 names(tune_df) <- c("n.trees","interaction.depth","shrinkage","n.minobsinnode")
-
-
-### Parallel Processing on 6 cores
-cl <- makePSOCKcluster(6)
-registerDoParallel(cl)
 
 # Build full model
 
@@ -578,9 +557,6 @@ boost_tree_pred <- predict(boost_tree_fit,test_set)
 
 # Check RMSE for full model
 boost_tree_rmse <- sqrt(mean((boost_tree_pred - test_set$shares)^2))
-
-## When you are done:
-stopCluster(cl)
 ```
 
 ```{r}
